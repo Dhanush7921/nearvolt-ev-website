@@ -212,16 +212,30 @@
   </section>
 
   <section class="band alt" id="vision" aria-labelledby="vision-title">
-    <div class="wrap split">
-      <div>
-        <p class="eyebrow reveal">Our vision</p>
-        <h2 id="vision-title" class="reveal">A charging network that grows street by street.</h2>
-        <p class="reveal">We want charging to feel as close and ordinary as parking. The plan is to start small and local in Andhra Pradesh, learn from drivers and hosts in a pilot, and expand to other cities only after the pilot meets its milestones.</p>
+    <div class="wrap">
+      <div class="split">
+        <div>
+          <p class="eyebrow reveal">Our vision · Visakhapatnam pilot (proposed)</p>
+          <h2 id="vision-title" class="reveal">A charging network that grows street by street.</h2>
+        </div>
+        <p class="reveal">We want charging to feel as close and ordinary as parking. The plan is to start small and local in Andhra Pradesh, learn from drivers and hosts in a pilot, and expand to other cities only after the pilot meets its milestones. Explore how a neighbourhood network could look.</p>
       </div>
-      <figure class="network reveal">
-        <canvas id="network" aria-hidden="true"></canvas>
-        <figcaption>Illustration of how hosts and stations could connect. Not real locations.</figcaption>
-      </figure>
+      <div class="map-shell reveal">
+        <div class="map-side">
+          <div class="map-head">
+            <span class="demo-note">Demonstration map · fictional hosts at approximate locations · not real chargers</span>
+            <div class="seg" id="map-filters" aria-label="Filter demo locations">
+              <button type="button" data-f="all" aria-pressed="true">All</button>
+              <button type="button" data-f="car" aria-pressed="false">Cars</button>
+              <button type="button" data-f="bike" aria-pressed="false">Bikes</button>
+            </div>
+          </div>
+          <ul class="map-list" id="map-list" aria-label="Demo charging locations"></ul>
+          <div class="map-legend" aria-hidden="true"><span><i class="k-home"></i>Home host</span><span><i class="k-shop"></i>Shop / office</span><span><i class="k-public"></i>Public point</span></div>
+          <button class="link-btn" id="map-reset" type="button">Reset view</button>
+        </div>
+        <div class="map-canvas" id="nv-map" role="region" aria-label="Interactive map of demo charging locations in Visakhapatnam" tabindex="0"></div>
+      </div>
     </div>
   </section>
 

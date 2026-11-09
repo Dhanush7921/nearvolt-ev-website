@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NEARVOLT EV — Charging, closer to you</title>
+<meta name="description" content="NEARVOLT EV is a planned platform that helps EV drivers find suitable public chargers and participating private charging hosts nearby, starting in Andhra Pradesh.">
+<meta name="theme-color" content="#060908">
+<meta property="og:title" content="NEARVOLT EV — Charging, closer to you">
+<meta property="og:description" content="A peer-to-peer EV charging discovery concept, in its pre-launch demonstration phase.">
+<meta property="og:image" content="video/nearvolt-intro-poster.jpg">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="brand/app-icon-512.png">
+<link rel="preload" href="models/ev-concept.glb" as="fetch" crossorigin>
+<link rel="stylesheet" href="styles/main.css">
+<script>document.documentElement.classList.add('js');</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<!-- Cinematic intro (8 s, once per session). Never blocks the page: any failure hands straight over. -->
+<div id="intro" class="intro" hidden aria-label="NEARVOLT EV introduction film">
+  <video id="intro-video" muted playsinline preload="auto" disablepictureinpicture aria-hidden="true"></video>
+  <div class="intro-ui">
+    <button class="pill ghost" id="intro-sound" type="button" aria-pressed="false"><span class="ico-sound" aria-hidden="true"></span><span class="lbl">Sound off</span></button>
+    <button class="pill" id="intro-skip" type="button">Skip intro <span aria-hidden="true">→</span></button>
+  </div>
+</div>
+
+<canvas id="scene" aria-hidden="true"></canvas>
+<img id="scene-fallback" class="scene-fallback" alt="" aria-hidden="true" hidden>
+<div class="cursor-light" aria-hidden="true"></div>
+
+<header class="nav" id="nav">
+  <a class="brand" href="#top" aria-label="NEARVOLT EV home"><img src="brand/logo-on-dark.svg" alt="NEARVOLT EV" width="172" height="32"></a>
+  <nav aria-label="Primary">
+    <button class="menu-btn" id="menu-btn" type="button" aria-expanded="false" aria-controls="menu"><span></span><span></span><span class="sr">Menu</span></button>
+    <ul id="menu">
+      <li><a href="#concept">Concept</a></li>
+      <li><a href="#how">How it works</a></li>
+      <li><a href="#drivers">Drivers</a></li>
+      <li><a href="#hosts">Hosts</a></li>
+      <li><a href="#safety">Safety</a></li>
+      <li><a href="#faq">FAQ</a></li>
+      <li><a class="pill small" href="#contact">Partner with us</a></li>
+    </ul>
+  </nav>
+</header>
+
+<main id="main">
+  <section class="hero" id="top" aria-labelledby="hero-title">
+    <div class="hero-copy">
+      <p class="eyebrow reveal">Peer-to-peer EV charging discovery · Andhra Pradesh</p>
+      <h1 id="hero-title" class="reveal"><span>Charging,</span> <span>closer to you.</span></h1>
+      <p class="lede reveal">NEARVOLT EV is a planned platform that connects electric-vehicle drivers with suitable public chargers and participating private charging hosts in their neighbourhood.</p>
+      <div class="cta reveal">
+        <a class="pill" href="#concept">Explore the concept</a>
+        <a class="pill ghost" href="#hosts">Become a host</a>
+      </div>
+    </div>
+    <div class="hotspots" id="hotspots" aria-label="Vehicle highlights">
+      <button class="hotspot" data-spot="port" type="button" aria-describedby="spot-port"><span class="sr">Charging inlet</span></button>
+      <button class="hotspot" data-spot="light" type="button" aria-describedby="spot-light"><span class="sr">Connector compatibility</span></button>
+      <button class="hotspot" data-spot="charger" type="button" aria-describedby="spot-charger"><span class="sr">Host charger</span></button>
+      <div class="spot-card" id="spot-port" role="tooltip"><b>Charging inlet</b>Drivers tell the app their connector, for example CCS2 or Type 2, so only compatible options appear.</div>
+      <div class="spot-card" id="spot-light" role="tooltip"><b>Power that fits</b>Charging speed is set by the lower of the charger’s output and what the vehicle accepts.</div>
+      <div class="spot-card" id="spot-charger" role="tooltip"><b>Participating host</b>Homes, shops and offices can offer a safe charger or socket at times they choose.</div>
+    </div>
+    <div class="hero-foot">
+      <p class="status"><span class="dot" aria-hidden="true"></span>NEARVOLT EV is currently in its pre-launch demonstration phase. Charging and booking services are not yet available.</p>
+      <button class="link-btn" id="replay-intro" type="button">Replay intro</button>
+    </div>
+  </section>
+
+  <section class="band" id="concept" aria-labelledby="concept-title">
+    <div class="wrap split">
+      <div>
+        <p class="eyebrow reveal">Our concept</p>
+        <h2 id="concept-title" class="reveal">The nearest charger might be a neighbour’s.</h2>
+      </div>
+      <div class="stack">
+        <p class="reveal">Public charging is growing, but it is still uneven. Many homes, shops and offices already have a safe charger or a suitable socket that sits idle for most of the day.</p>
+        <p class="reveal">NEARVOLT EV is designed to bring both together in one place: public stations and verified private hosts, filtered for your vehicle, so a short detour can replace a long search.</p>
+        <ul class="ticks reveal">
+          <li>For electric cars, scooters and bikes</li>
+          <li>Public stations and participating private hosts</li>
+          <li>Andhra Pradesh first, with Visakhapatnam proposed as the pilot city, subject to demand validation</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="band alt" id="how" aria-labelledby="how-title">
+    <div class="wrap">
+      <p class="eyebrow reveal">How NEARVOLT EV works</p>
+      <h2 id="how-title" class="reveal">Four steps, planned for the app.</h2>
+      <ol class="steps">
+        <li class="reveal"><span>01</span><h3>Add your vehicle</h3><p>Choose your car or two-wheeler, its connector and the power it accepts.</p></li>
+        <li class="reveal"><span>02</span><h3>Discover nearby</h3><p>See public chargers and participating hosts that actually fit your vehicle.</p></li>
+        <li class="reveal"><span>03</span><h3>Check and arrive</h3><p>Compare distance, connector, power, availability and the host’s price before you go.</p></li>
+        <li class="reveal"><span>04</span><h3>Plug in and charge</h3><p>Charge with clear session details, and rate the experience afterwards.</p></li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="story" id="experience" aria-labelledby="exp-title">
+    <div class="story-sticky">
+      <h2 id="exp-title" class="sr">The charging experience</h2>
+      <div class="story-steps" id="story-steps">
+        <article data-at="0.08"><p class="eyebrow">Charging experience · Find</p><h3>A charger that fits, not just the closest pin.</h3><p>Results are meant to be filtered by connector and power, so incompatible options stay hidden.</p></article>
+        <article data-at="0.35"><p class="eyebrow">Arrive</p><h3>Know what is waiting.</h3><p>Parking access, opening hours and the host’s own notes are planned to be visible before you set off.</p></article>
+        <article data-at="0.62"><p class="eyebrow">Connect</p><h3>Plug in with confidence.</h3><p>Hosts describe their equipment so you know which cable and connector to expect.</p></article>
+        <article data-at="0.9"><p class="eyebrow">Charge</p><h3>Part of a wider network.</h3><p>Every participating host adds one more place to charge in the neighbourhood.</p></article>
+      </div>
+      <div class="story-bar" aria-hidden="true"><i id="story-progress"></i></div>
+    </div>
+  </section>
+
+  <section class="band" id="drivers" aria-labelledby="drivers-title">
+    <div class="wrap">
+      <p class="eyebrow reveal">For EV drivers</p>
+      <h2 id="drivers-title" class="reveal">Built around your vehicle.</h2>
+      <div class="cards">
+        <article class="gcard reveal" style="--g: linear-gradient(137deg,#5BF0B6 0%,#19D38F 45%,#0A8F5E 100%)"><div class="gcard-glow"></div><div class="gcard-in"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s7-6.2 7-12a7 7 0 0 0-14 0c0 5.8 7 12 7 12Z"/><circle cx="12" cy="10" r="2.5"/></svg><div><h3>Closer options</h3><p>Public stations and neighbourhood hosts in one view, so you can charge where you already are.</p></div></div></article>
+        <article class="gcard reveal" style="--g: linear-gradient(137deg,#FFFFFF 0%,#9DF5D3 45%,#19D38F 100%)"><div class="gcard-glow"></div><div class="gcard-in"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3v6M17 3v6M5 9h14v3a7 7 0 0 1-14 0V9ZM12 19v3"/></svg><div><h3>Right connector</h3><p>Options filtered by connector and power, for cars and for two-wheelers.</p></div></div></article>
+        <article class="gcard reveal" style="--g: linear-gradient(137deg,#19D38F 0%,#0E5A43 50%,#F3F7F5 100%)"><div class="gcard-glow"></div><div class="gcard-in"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z"/></svg><div><h3>Clear pricing</h3><p>Hosts set their own rate, shown before you travel. No surprises at the socket.</p></div></div></article>
+      </div>
+
+      <div class="tool reveal" id="compat">
+        <div class="tool-head">
+          <h3>Connector guide</h3>
+          <div class="seg" role="radiogroup" aria-label="Vehicle type">
+            <button type="button" role="radio" aria-checked="true" data-kind="car">Car</button>
+            <button type="button" role="radio" aria-checked="false" data-kind="bike">Scooter / bike</button>
+          </div>
+        </div>
+        <div class="compat">
+          <div class="conn-list" role="radiogroup" aria-label="Connector" id="conn-list"></div>
+          <div class="conn-detail" id="conn-detail" aria-live="polite"></div>
+        </div>
+      </div>
+
+      <div class="tool reveal" id="calc">
+        <div class="tool-head"><h3>Charging time estimator</h3><div class="seg" id="presets" aria-label="Examples"></div></div>
+        <div class="calc">
+          <form class="fields" id="calc-form" onsubmit="return false"></form>
+          <div class="result" aria-live="polite">
+            <div><small>Time</small><strong id="r-time">–</strong></div>
+            <div><small>Energy from the wall</small><strong id="r-kwh">–</strong></div>
+            <div><small>Cost at the example rate</small><strong id="r-cost">–</strong></div>
+            <p class="fine">An estimate for planning only: full power to 80%, slower above it, about 90% efficiency. Real sessions depend on the vehicle, temperature and equipment. The rate is an example, not a NEARVOLT EV price.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band alt" id="hosts" aria-labelledby="hosts-title">
+    <div class="wrap split">
+      <div>
+        <p class="eyebrow reveal">For charging hosts</p>
+        <h2 id="hosts-title" class="reveal">Your charger can serve the neighbourhood.</h2>
+        <p class="reveal">If you have a home wallbox, a charger at your shop or office, or a properly protected socket for two-wheelers, you could offer it to nearby drivers at the times and price you choose.</p>
+        <a class="pill reveal" href="#contact">Register interest as a host</a>
+      </div>
+      <ol class="host-steps">
+        <li class="reveal"><b>Describe your equipment</b><span>Charger or socket type, power rating, connector, parking access and photos of the installation.</span></li>
+        <li class="reveal"><b>Safety review</b><span>Hosts are planned to be verified, with checks on earthing and circuit protection before listing.</span></li>
+        <li class="reveal"><b>Set availability and rate</b><span>Choose hours, cars, bikes or both, and your rate per kWh, per hour or per session.</span></li>
+        <li class="reveal"><b>Earn from completed sessions</b><span>Hosts are intended to be paid for completed charging sessions through the app.</span></li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="band" id="app" aria-labelledby="app-title">
+    <div class="wrap">
+      <p class="eyebrow reveal">Product preview</p>
+      <h2 id="app-title" class="reveal">A first look at the planned app.</h2>
+      <p class="reveal demo-note">Demonstration screens. Locations, hosts and prices shown are fictional.</p>
+      <div class="phones">
+        <figure class="phone reveal" aria-label="Demo screen: nearby chargers">
+          <div class="screen">
+            <div class="s-top"><span>Nearby</span><i>Demo</i></div>
+            <div class="s-map"><b style="left:30%;top:40%"></b><b style="left:62%;top:28%"></b><b class="me" style="left:48%;top:58%"></b><b style="left:72%;top:66%"></b></div>
+            <div class="s-row"><strong>Sample Host · Type 2</strong><span>7.2 kW · 1.1 km</span></div>
+            <div class="s-row"><strong>Sample Station · CCS2</strong><span>30 kW · 2.4 km</span></div>
+          </div>
+          <figcaption>Discover</figcaption>
+        </figure>
+        <figure class="phone reveal" aria-label="Demo screen: host details">
+          <div class="screen">
+            <div class="s-top"><span>Host details</span><i>Demo</i></div>
+            <div class="s-hero"></div>
+            <div class="s-row"><strong>Connector</strong><span>Type 2 · tethered</span></div>
+            <div class="s-row"><strong>Available</strong><span>6 pm – 10 pm</span></div>
+            <div class="s-row"><strong>Rate (example)</strong><span>₹ 12 / kWh</span></div>
+            <div class="s-btn">Request slot</div>
+          </div>
+          <figcaption>Check</figcaption>
+        </figure>
+        <figure class="phone reveal" aria-label="Demo screen: charging session">
+          <div class="screen">
+            <div class="s-top"><span>Session</span><i>Demo</i></div>
+            <div class="s-ring"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="50"/><circle class="arc" cx="60" cy="60" r="50"/></svg><strong>68%</strong></div>
+            <div class="s-row"><strong>Delivered</strong><span>9.4 kWh</span></div>
+            <div class="s-row"><strong>Elapsed</strong><span>1 h 18 min</span></div>
+          </div>
+          <figcaption>Charge</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="band alt" id="vision" aria-labelledby="vision-title">
+    <div class="wrap">
+      <div class="split">
+        <div>
+          <p class="eyebrow reveal">Our vision · Visakhapatnam pilot (proposed)</p>
+          <h2 id="vision-title" class="reveal">A charging network that grows street by street.</h2>
+        </div>
+        <p class="reveal">We want charging to feel as close and ordinary as parking. The plan is to start small and local in Andhra Pradesh, learn from drivers and hosts in a pilot, and expand to other cities only after the pilot meets its milestones. Explore how a neighbourhood network could look.</p>
+      </div>
+      <div class="map-shell reveal">
+        <div class="map-side">
+          <div class="map-head">
+            <span class="demo-note">Demonstration map · fictional hosts at approximate locations · not real chargers</span>
+            <div class="seg" id="map-filters" aria-label="Filter demo locations">
+              <button type="button" data-f="all" aria-pressed="true">All</button>
+              <button type="button" data-f="car" aria-pressed="false">Cars</button>
+              <button type="button" data-f="bike" aria-pressed="false">Bikes</button>
+            </div>
+          </div>
+          <ul class="map-list" id="map-list" aria-label="Demo charging locations"></ul>
+          <div class="map-legend" aria-hidden="true"><span><i class="k-home"></i>Home host</span><span><i class="k-shop"></i>Shop / office</span><span><i class="k-public"></i>Public point</span></div>
+          <button class="link-btn" id="map-reset" type="button">Reset view</button>
+        </div>
+        <div class="map-canvas" id="nv-map" role="region" aria-label="Interactive map of demo charging locations in Visakhapatnam" tabindex="0"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="safety" aria-labelledby="safety-title">
+    <div class="wrap">
+      <p class="eyebrow reveal">Safety and trust</p>
+      <h2 id="safety-title" class="reveal">Electricity deserves care.</h2>
+      <div class="grid4">
+        <div class="reveal"><h3>Verified hosts</h3><p>Hosts are planned to be identity-checked and reviewed before they can be listed.</p></div>
+        <div class="reveal"><h3>Proper installations</h3><p>Chargers and sockets should be on earthed, correctly protected circuits. Extension cords are not a safe substitute.</p></div>
+        <div class="reveal"><h3>Honest information</h3><p>Connector, power, price and access details are shown up front, and drivers can rate every session.</p></div>
+        <div class="reveal"><h3>Privacy by default</h3><p>The app is designed to share only what a session needs. This website collects no personal data.</p></div>
+      </div>
+      <p class="callout reveal">If a charger, plug or cable is damaged, hot, wet or smells of burning, do not use it. Follow the vehicle manufacturer’s charging instructions at all times.</p>
+    </div>
+  </section>
+
+  <section class="band alt" id="faq" aria-labelledby="faq-title">
+    <div class="wrap narrow">
+      <p class="eyebrow reveal">FAQ</p>
+      <h2 id="faq-title" class="reveal">Questions, answered.</h2>
+      <div class="faq">
+        <details class="reveal"><summary>Can I use NEARVOLT EV today?</summary><p>Not yet. NEARVOLT EV is in its pre-launch demonstration phase. There is no live charger map, booking or payment on this website.</p></details>
+        <details class="reveal"><summary>Where will it launch?</summary><p>Andhra Pradesh first. Visakhapatnam is the proposed pilot city, subject to demand validation. Other cities would follow only after the pilot meets its milestones.</p></details>
+        <details class="reveal"><summary>How will the app know which chargers suit my vehicle?</summary><p>You will tell it your vehicle and connector, for example CCS2, Type 2, Type 7 (LECCS) or a portable charger. Options are planned to be filtered by connector and power so incompatible ones stay hidden. See the <a href="#compat">connector guide</a>.</p></details>
+        <details class="reveal"><summary>Does it work for electric scooters and bikes?</summary><p>Yes, two-wheelers are part of the plan from the start, including suitable sockets for portable chargers and light-EV connectors.</p></details>
+        <details class="reveal"><summary>Who can become a host?</summary><p>Homeowners, shops, offices and other premises with a safe charger or a properly protected socket. Hosts are planned to be verified before listing.</p></details>
+        <details class="reveal"><summary>How will pricing work?</summary><p>Hosts are expected to set their own rate per kWh, per hour or per session, shown to drivers before they travel. Final terms will be published before launch.</p></details>
+        <details class="reveal"><summary>Is the car in the film a real product?</summary><p>No. It is a licensed, logo-free concept-car model rendered in real time for illustration. NEARVOLT EV is a charging platform, not a vehicle maker.</p></details>
+      </div>
+    </div>
+  </section>
+
+  <section class="band contact" id="contact" aria-labelledby="contact-title">
+    <div class="wrap split">
+      <div>
+        <p class="eyebrow reveal">Contact and partnerships</p>
+        <h2 id="contact-title" class="reveal">Build the network with us.</h2>
+        <p class="reveal">We would like to hear from prospective hosts, charging operators, property owners, fleet operators and investors interested in the NEARVOLT EV pilot.</p>
+      </div>
+      <div class="contact-box reveal" id="contact-box">
+        <ul class="ticks">
+          <li>Hosts: homes, shops, offices and parking sites</li>
+          <li>Partners: charge point operators and installers</li>
+          <li>Investors and pilot collaborators</li>
+        </ul>
+        <div id="contact-actions"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="wrap foot">
+    <img src="brand/logo-on-dark.svg" alt="NEARVOLT EV" width="150" height="28">
+    <p>NEARVOLT EV is currently in its pre-launch demonstration phase. Charging and booking services are not yet available.</p>
+    <nav aria-label="Footer"><a href="legal.html">Legal &amp; Credits</a><a href="#top">Back to top</a></nav>
+    <small>© 2026 NEARVOLT EV</small>
+  </div>
+</footer>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

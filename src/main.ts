@@ -2,7 +2,8 @@
 import { heroState, storyState, type Framing } from './engine/director.js';
 import { clamp, type V3 } from './engine/math.js';
 import { HEADLIGHTS, PORT, Studio, type SceneState } from './engine/studio.js';
-import { initCalc, initCompat, initContact, initNetwork } from './sections.js';
+import { initMap } from './map.js';
+import { initCalc, initCompat, initContact } from './sections.js';
 
 const $ = <T extends HTMLElement>(s: string) => document.querySelector(s) as T;
 const q = new URLSearchParams(location.search);
@@ -217,4 +218,4 @@ if (finePointer && !reduced) {
 initCompat();
 initCalc();
 initContact();
-initNetwork(reduced);
+initMap();
