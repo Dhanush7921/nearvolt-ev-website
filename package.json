@@ -1,0 +1,21 @@
+{
+  "name": "nearvolt-ev-website",
+  "private": true,
+  "version": "2.0.0",
+  "description": "NEARVOLT EV V2 — cinematic concept website for a peer-to-peer EV charging discovery platform (pre-launch).",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc -p . --noEmit",
+    "build": "node scripts/build.mjs",
+    "preview": "node scripts/serve.mjs 4173",
+    "logo": "python3 scripts/build_logo.py",
+    "audio": "python3 scripts/make_audio.py",
+    "render:intro": "node scripts/build.mjs --with-render && node scripts/render-intro.mjs --framing land --w 1920 --h 1080 && node scripts/render-intro.mjs --framing port --w 720 --h 1280",
+    "encode:intro": "sh scripts/encode-intro.sh",
+    "qa": "node scripts/qa.mjs http://localhost:4173/"
+  },
+  "devDependencies": {
+    "typescript": ">=5.9"
+  },
+  "engines": { "node": ">=20" }
+}
