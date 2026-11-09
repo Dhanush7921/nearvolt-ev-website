@@ -74,7 +74,7 @@ export class Studio3 {
     const side = new THREE.RectAreaLight('#f2f7f5', 0, 5, 0.5); side.position.set(-4.5, 1.6, 1.5); side.lookAt(0, 0.8, 0);
     const rim = new THREE.RectAreaLight('#19d38f', 0, 5, 0.12); rim.position.set(1, 1.3, -4.6); rim.lookAt(0, 0.8, 0);
     const sun = new THREE.DirectionalLight('#ffffff', 0); sun.position.set(2.5, 7, 3.5); sun.castShadow = true;
-    sun.shadow.mapSize.set(opts.high ? 2048 : 1024, opts.high ? 2048 : 1024);
+    sun.shadow.mapSize.set(1024, 1024);
     Object.assign(sun.shadow.camera, { left: -4, right: 4, top: 4, bottom: -4, near: 1, far: 16 });
     sun.shadow.radius = 6; sun.shadow.bias = -0.0004;
     const hemi = new THREE.HemisphereLight('#dfe8e5', '#0b0f0e', 0);
@@ -82,12 +82,12 @@ export class Studio3 {
     this.lights = { key, side, rim, sun, hemi };
 
     // glossy studio floor: mirror (high tier) under a semi-transparent satin layer + soft shadow catcher
-    if (opts.high) {
+    if (opts.high && new URLSearchParams(location.search).has('mirror')) { // full mirror re-renders the scene: opt-in only
       const mirror = new Reflector(new THREE.CircleGeometry(30, 64), { textureWidth: 1024, textureHeight: 1024, color: 0x3a3e3d });
       mirror.rotation.x = -Math.PI / 2; mirror.position.y = -0.001;
       this.scene.add(mirror);
     }
-    const satin = new THREE.Mesh(new THREE.CircleGeometry(30, 64), new THREE.MeshStandardMaterial({ color: '#050706', roughness: 0.5, metalness: 0, envMapIntensity: 0.12, transparent: opts.high, opacity: opts.high ? 0.93 : 1 }));
+    const satin = new THREE.Mesh(new THREE.CircleGeometry(30, 64), new THREE.MeshStandardMaterial({ color: '#050706', roughness: 0.32, metalness: 0, envMapIntensity: 0.12 }));
     satin.rotation.x = -Math.PI / 2; satin.receiveShadow = true;
     this.scene.add(satin);
     const shadow = new THREE.Mesh(new THREE.PlaneGeometry(14, 14), new THREE.ShadowMaterial({ opacity: 0.55 }));
@@ -158,6 +158,9 @@ export class Studio3 {
       this.scene.add(ph);
     }
     this.layout();
+    // compile every shader before the first visible frame (avoids main-thread stalls mid-intro)
+    if (this.renderer.compileAsync) await this.renderer.compileAsync(this.scene, this.camera);
+    this.render(this.heroShot(0), 0);
     this.ready = true;
   }
 
