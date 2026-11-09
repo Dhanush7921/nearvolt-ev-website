@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NEARVOLT EV — V3 cinematic hero (preview)</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="styles/main.css">
+<link rel="stylesheet" href="styles/v3.css">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/ScrollTrigger.min.js" defer></script>
+</head>
+<body class="v3">
+<canvas id="v3-gl" aria-hidden="true"></canvas>
+<canvas id="v3-fx" aria-hidden="true"></canvas>
+<img id="v3-ref" alt="" hidden>
+<audio id="v3-audio" preload="auto" muted><source src="audio/nearvolt-intro.ogg" type="audio/ogg"><source src="audio/nearvolt-intro.m4a" type="audio/mp4"></audio>
+<div class="v3-intro-ui">
+  <button class="pill ghost" id="v3-sound" type="button" aria-pressed="false"><span class="ico-sound" aria-hidden="true"></span><span class="lbl">Sound off</span></button>
+  <button class="pill" id="v3-skip" type="button">Skip intro <span aria-hidden="true">→</span></button>
+</div>
+<header class="nav">
+  <a class="brand" href="./" aria-label="NEARVOLT EV home"><img src="brand/logo-on-dark.svg" alt="NEARVOLT EV" width="172" height="32"></a>
+  <a class="pill small ghost" href="./#vision">Explore the demo map</a>
+</header>
+<main>
+  <section class="v3-hero">
+    <p class="eyebrow">Peer-to-peer EV charging discovery · Andhra Pradesh</p>
+    <h1 data-split>Charging, closer to you.</h1>
+    <p class="lede">NEARVOLT EV is a planned platform that connects EV drivers with suitable public chargers and participating private hosts nearby.</p>
+    <div class="v3-foot"><p class="status"><span class="dot"></span>Pre-launch demonstration. Charging and booking services are not yet available.</p><button class="link-btn" id="v3-replay" type="button">Replay intro</button></div>
+    <p class="v3-status" id="v3-status" role="status"></p>
+  </section>
+  <section class="v3-story" id="v3-story" aria-label="The charging experience">
+    <div class="v3-sticky">
+      <article class="v3-chapter on"><span>01 · Find</span><h2>A charger that fits your vehicle.</h2><p>Options filtered by connector and power, public and private, in one view.</p></article>
+      <article class="v3-chapter"><span>02 · Connect</span><h2>Plug in with confidence.</h2><p>Hosts describe their equipment, so you know what is waiting.</p></article>
+      <article class="v3-chapter"><span>03 · Charge</span><h2>Part of a growing neighbourhood network.</h2><p>Every participating host adds one more place to charge.</p></article>
+    </div>
+  </section>
+  <section class="v3-outro band"><div class="wrap"><h2 data-split>Built street by street.</h2><p class="v3-rise">This page previews the V3 cinematic hero architecture. The approved licensed vehicle model will replace the placeholder envelope.</p><a class="pill v3-rise" href="./">Back to the current site</a></div></section>
+</main>
+<script type="module" src="js/v3/main3.js"></script>
+</body>
+</html>

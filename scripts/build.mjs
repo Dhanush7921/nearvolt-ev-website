@@ -6,7 +6,7 @@ const OUT = process.env.OUT || 'dist';
 rmSync(OUT, { recursive: true, force: true });
 mkdirSync(OUT, { recursive: true });
 execSync(`tsc -p . --outDir ${OUT}/js`, { stdio: 'inherit' });
-if (!withRender) rmSync(`${OUT}/js/render.js`, { force: true }), rmSync(`${OUT}/js/logoFx.js`, { force: true });
+if (!withRender) rmSync(`${OUT}/js/render.js`, { force: true });
 for (const f of readdirSync('.').filter((f) => f.endsWith('.html'))) if (withRender || f !== 'render.html') cpSync(f, `${OUT}/${f}`);
 cpSync('styles', `${OUT}/styles`, { recursive: true });
 cpSync('public', OUT, { recursive: true });
