@@ -11,25 +11,26 @@
 <meta property="og:image" content="video/nearvolt-intro-poster.jpg">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="brand/app-icon-512.png">
-<link rel="preload" href="models/ev-concept.glb" as="fetch" crossorigin>
 <link rel="stylesheet" href="styles/main.css">
+<link rel="stylesheet" href="styles/v3.css">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/ScrollTrigger.min.js" defer></script>
 <script>document.documentElement.classList.add('js');</script>
 </head>
-<body>
+<body class="v3">
 <a class="skip" href="#main">Skip to content</a>
 
-<!-- Cinematic intro (8 s, once per session). Never blocks the page: any failure hands straight over. -->
-<div id="intro" class="intro" hidden aria-label="NEARVOLT EV introduction film">
-  <video id="intro-video" muted playsinline preload="auto" disablepictureinpicture aria-hidden="true"></video>
-  <div class="intro-ui">
-    <button class="pill ghost" id="intro-sound" type="button" aria-pressed="false"><span class="ico-sound" aria-hidden="true"></span><span class="lbl">Sound off</span></button>
-    <button class="pill" id="intro-skip" type="button">Skip intro <span aria-hidden="true">→</span></button>
-  </div>
+<canvas id="v3-gl" aria-hidden="true"></canvas>
+<canvas id="v3-fx" aria-hidden="true"></canvas>
+<div class="v3-fallback" id="v3-fallback" hidden></div>
+<div class="v3-loader" id="v3-loader" aria-hidden="true"><img src="brand/mark.svg" alt="" width="56" height="56"><i><b id="v3-load-bar"></b></i></div>
+<audio id="v3-audio" preload="auto" muted><source src="audio/nearvolt-intro.ogg" type="audio/ogg"><source src="audio/nearvolt-intro.m4a" type="audio/mp4"></audio>
+<div class="v3-intro-ui">
+  <button class="pill ghost" id="v3-sound" type="button" aria-pressed="false"><span class="ico-sound" aria-hidden="true"></span><span class="lbl">Sound off</span></button>
+  <button class="pill" id="v3-skip" type="button">Skip intro <span aria-hidden="true">→</span></button>
 </div>
-
-<canvas id="scene" aria-hidden="true"></canvas>
-<img id="scene-fallback" class="scene-fallback" alt="" aria-hidden="true" hidden>
-<div class="cursor-light" aria-hidden="true"></div>
 
 <header class="nav" id="nav">
   <a class="brand" href="#top" aria-label="NEARVOLT EV home"><img src="brand/logo-on-dark.svg" alt="NEARVOLT EV" width="172" height="32"></a>
@@ -48,28 +49,14 @@
 </header>
 
 <main id="main">
-  <section class="hero" id="top" aria-labelledby="hero-title">
-    <div class="hero-copy">
-      <p class="eyebrow reveal">Peer-to-peer EV charging discovery · Andhra Pradesh</p>
-      <h1 id="hero-title" class="reveal"><span>Charging,</span> <span>closer to you.</span></h1>
-      <p class="lede reveal">NEARVOLT EV is a planned platform that connects electric-vehicle drivers with suitable public chargers and participating private charging hosts in their neighbourhood.</p>
-      <div class="cta reveal">
-        <a class="pill" href="#concept">Explore the concept</a>
-        <a class="pill ghost" href="#hosts">Become a host</a>
-      </div>
-    </div>
-    <div class="hotspots" id="hotspots" aria-label="Vehicle highlights">
-      <button class="hotspot" data-spot="port" type="button" aria-describedby="spot-port"><span class="sr">Charging inlet</span></button>
-      <button class="hotspot" data-spot="light" type="button" aria-describedby="spot-light"><span class="sr">Connector compatibility</span></button>
-      <button class="hotspot" data-spot="charger" type="button" aria-describedby="spot-charger"><span class="sr">Host charger</span></button>
-      <div class="spot-card" id="spot-port" role="tooltip"><b>Charging inlet</b>Drivers tell the app their connector, for example CCS2 or Type 2, so only compatible options appear.</div>
-      <div class="spot-card" id="spot-light" role="tooltip"><b>Power that fits</b>Charging speed is set by the lower of the charger’s output and what the vehicle accepts.</div>
-      <div class="spot-card" id="spot-charger" role="tooltip"><b>Participating host</b>Homes, shops and offices can offer a safe charger or socket at times they choose.</div>
-    </div>
-    <div class="hero-foot">
-      <p class="status"><span class="dot" aria-hidden="true"></span>NEARVOLT EV is currently in its pre-launch demonstration phase. Charging and booking services are not yet available.</p>
-      <button class="link-btn" id="replay-intro" type="button">Replay intro</button>
-    </div>
+  <section class="v3-hero" id="top" aria-labelledby="hero-title">
+    <p class="eyebrow">Peer-to-peer EV charging discovery · Andhra Pradesh</p>
+    <h1 id="hero-title" data-split>Charging, closer to you.</h1>
+    <p class="lede">NEARVOLT EV is a planned platform that connects electric-vehicle drivers with suitable public chargers and participating private charging hosts in their neighbourhood.</p>
+    <div class="cta"><a class="pill" href="#concept">Explore the concept</a><a class="pill ghost" href="#hosts">Become a host</a></div>
+    <p class="v3-drag" aria-hidden="true"><span></span>Drag to explore 360°</p>
+    <div class="v3-foot"><p class="status"><span class="dot" aria-hidden="true"></span>NEARVOLT EV is currently in its pre-launch demonstration phase. Charging and booking services are not yet available.</p><button class="link-btn" id="v3-replay" type="button">Replay intro</button></div>
+    <p class="v3-status" id="v3-status" role="status"></p>
   </section>
 
   <section class="band" id="concept" aria-labelledby="concept-title">
@@ -103,15 +90,11 @@
     </div>
   </section>
 
-  <section class="story" id="experience" aria-labelledby="exp-title">
-    <div class="story-sticky">
-      <h2 id="exp-title" class="sr">The charging experience</h2>
-      <div class="story-steps" id="story-steps">
-        <article data-at="0.08"><p class="eyebrow">Charging experience · Find</p><h3>A charger that fits, not just the closest pin.</h3><p>Results are meant to be filtered by connector and power, so incompatible options stay hidden.</p></article>
-        <article data-at="0.35"><p class="eyebrow">Arrive</p><h3>Know what is waiting.</h3><p>Parking access, opening hours and the host’s own notes are planned to be visible before you set off.</p></article>
-        <article data-at="0.62"><p class="eyebrow">Connect</p><h3>Plug in with confidence.</h3><p>Hosts describe their equipment so you know which cable and connector to expect.</p></article>
-        <article data-at="0.9"><p class="eyebrow">Charge</p><h3>Part of a wider network.</h3><p>Every participating host adds one more place to charge in the neighbourhood.</p></article>
-      </div>
+  <section class="v3-story" id="experience" aria-label="The charging experience">
+    <div class="v3-sticky">
+      <article class="v3-chapter on"><span>Charging experience · 01 Find</span><h2>A charger that fits your vehicle.</h2><p>Options are planned to be filtered by connector and power, public and private, in one view.</p></article>
+      <article class="v3-chapter"><span>02 · Connect</span><h2>Plug in with confidence.</h2><p>Hosts describe their equipment, so you know which cable and connector are waiting.</p></article>
+      <article class="v3-chapter"><span>03 · Charge</span><h2>Part of a growing neighbourhood network.</h2><p>Every participating host adds one more place to charge.</p></article>
       <div class="story-bar" aria-hidden="true"><i id="story-progress"></i></div>
     </div>
   </section>
@@ -286,16 +269,24 @@
       </div>
     </div>
   </section>
+  <section class="v3-final" aria-labelledby="final-title">
+    <div class="wrap"><p class="eyebrow">NEARVOLT EV</p><h2 id="final-title" data-split>The nearest charger might be a neighbour’s.</h2><div class="cta v3-rise"><a class="pill" href="#contact">Partner with us</a><a class="pill ghost" href="#vision">Explore the demo map</a></div></div>
+  </section>
 </main>
 
 <footer class="footer">
   <div class="wrap foot">
     <img src="brand/logo-on-dark.svg" alt="NEARVOLT EV" width="150" height="28">
     <p>NEARVOLT EV is currently in its pre-launch demonstration phase. Charging and booking services are not yet available.</p>
-    <nav aria-label="Footer"><a href="legal.html">Legal &amp; Credits</a><a href="#top">Back to top</a></nav>
+    <nav aria-label="Footer"><a href="legal.html">Legal &amp; Credits</a><a href="v2.html">Previous version</a><a href="#top">Back to top</a></nav>
     <small>© 2026 NEARVOLT EV</small>
   </div>
 </footer>
-<script type="module" src="js/main.js"></script>
+<script>
+  // if the 3D module (three.js from CDN) cannot start, never leave the loader up: show the static fallback
+  setTimeout(function () { if (!window.__nv3) { var l = document.getElementById('v3-loader'); if (l) l.remove(); document.getElementById('v3-fallback').hidden = false; document.body.classList.add('no-gl'); } }, 9000);
+</script>
+<script type="module" src="js/v3/site.js"></script>
+<script type="module" src="js/v3/main3.js"></script>
 </body>
 </html>

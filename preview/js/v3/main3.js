@@ -2,13 +2,34 @@
 import { LogoFx } from '../logoFx.js';
 import { INTRO, Studio3 } from './scene.js';
 import { VEHICLE } from './vehicle.js';
+window.__nv3 = true; // 3D module started (see the fallback timer in index.html)
 const q = new URLSearchParams(location.search);
 const $ = (s) => document.querySelector(s);
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const fine = matchMedia('(pointer: fine)').matches;
 const rec = q.has('rec');
 const portrait = innerWidth / innerHeight < 0.8;
-const high = !q.has('low') && (fine || innerWidth >= 900);
+/** Integrated GPUs get the 2K vehicle and a lower pixel ratio; discrete GPUs get 4K textures. */
+function gpuTier() {
+    if (q.has('low'))
+        return 'low';
+    try {
+        const g = document.createElement('canvas').getContext('webgl2');
+        if (!g)
+            return 'low';
+        const ext = g.getExtension('WEBGL_debug_renderer_info');
+        const name = ext ? String(g.getParameter(ext.UNMASKED_RENDERER_WEBGL)) : '';
+        g.getExtension('WEBGL_lose_context')?.loseContext();
+        if (!fine && innerWidth < 900)
+            return 'low';
+        return /intel|uhd|iris|mali|adreno|powervr|apple gpu|swiftshader|llvmpipe/i.test(name) ? 'mid' : 'high';
+    }
+    catch {
+        return 'low';
+    }
+}
+const tier = gpuTier();
+const high = tier === 'high';
 const ss = { get: (k) => { try {
         return sessionStorage.getItem(k);
     }
@@ -20,8 +41,16 @@ const ss = { get: (k) => { try {
     catch { /* blocked */ } } };
 const canvas = $('#v3-gl');
 const fxCanvas = $('#v3-fx');
-const studio = new Studio3(canvas, { high, portrait });
-let dpr = rec ? 1 : Math.min(devicePixelRatio || 1, high ? 1.75 : 1.25);
+let studio;
+try {
+    studio = new Studio3(canvas, { high: tier !== 'low', portrait });
+}
+catch (e) {
+    fail();
+    throw e;
+}
+function fail() { document.body.classList.add('no-gl'); $('#v3-fallback').hidden = false; $('#v3-loader')?.remove(); }
+let dpr = rec ? 1 : Math.min(devicePixelRatio || 1, tier === 'high' ? 1.75 : tier === 'mid' ? 1.25 : 1);
 const size = () => {
     studio.setSize(innerWidth, innerHeight, dpr);
     fxCanvas.width = Math.round(innerWidth * dpr);
@@ -31,10 +60,11 @@ size();
 addEventListener('resize', size);
 const logo = new LogoFx(fxCanvas.getContext('2d'), fxCanvas.width, fxCanvas.height, portrait);
 const modelUrl = q.get('model') || (VEHICLE.enabled ? (high ? VEHICLE.url : VEHICLE.urlLite) : null);
-$('#v3-status').textContent = modelUrl ? 'Loading vehicle…' : 'Awaiting the approved licensed vehicle model — placeholder envelope shown.';
-const ready = studio.load(modelUrl, (p) => { $('#v3-status').textContent = `Loading vehicle ${Math.round(p * 100)}%`; })
-    .then(() => { $('#v3-status').textContent = modelUrl ? '' : $('#v3-status').textContent; })
-    .catch((e) => { $('#v3-status').textContent = `Vehicle failed to load: ${e.message}`; return studio.load(null); });
+const bar = document.getElementById('v3-load-bar');
+const ready = studio.load(modelUrl, (p) => { if (bar)
+    bar.style.transform = `scaleX(${p})`; })
+    .then(() => { document.getElementById('v3-loader')?.classList.add('done'); setTimeout(() => document.getElementById('v3-loader')?.remove(), 900); })
+    .catch(() => { fail(); throw new Error('vehicle'); });
 // optional composition guide: ?ref=<image url> (never shipped as an asset)
 const ref = q.get('ref');
 if (ref) {
@@ -49,6 +79,16 @@ const ptr = { x: 0, y: 0, tx: 0, ty: 0 };
 if (fine && !reduced)
     addEventListener('pointermove', (e) => { ptr.tx = e.clientX / innerWidth * 2 - 1; ptr.ty = e.clientY / innerHeight * 2 - 1; }, { passive: true });
 let story = 0;
+// drag to orbit (360° exploration) on the hero
+let yaw = 0, yawT = 0, dragX = null;
+const heroEl = $('.v3-hero');
+heroEl.addEventListener('pointerdown', (e) => { if (e.target.closest('a,button'))
+    return; dragX = e.clientX; heroEl.setPointerCapture(e.pointerId); heroEl.classList.add('dragging'); });
+heroEl.addEventListener('pointermove', (e) => { if (dragX === null)
+    return; yawT += (e.clientX - dragX) / innerWidth * 3.2; dragX = e.clientX; });
+const endDrag = () => { dragX = null; heroEl.classList.remove('dragging'); };
+heroEl.addEventListener('pointerup', endDrag);
+heroEl.addEventListener('pointercancel', endDrag);
 const audio = $('#v3-audio');
 function frame(shot, time, introT) {
     studio.render(shot, time);
@@ -89,8 +129,11 @@ addEventListener('keydown', (e) => { if (e.key === 'Escape')
 // ---------- scroll choreography (GSAP ScrollTrigger when available, manual fallback) ----------
 const storyEl = $('#v3-story');
 const chapters = [...document.querySelectorAll('.v3-chapter')];
+const storyBar = document.getElementById('story-progress');
 function setStory(p) {
     story = p;
+    if (storyBar)
+        storyBar.style.transform = `scaleX(${p})`;
     const k = Math.min(chapters.length - 1, Math.floor(p * chapters.length));
     chapters.forEach((c, i) => c.classList.toggle('on', i === k));
 }
@@ -125,7 +168,12 @@ function loop(now) {
     }
     const el = reduced ? 0 : (now - heroStart) / 1000;
     const r = storyEl.getBoundingClientRect();
-    const shot = r.top < innerHeight * 0.98 ? studio.storyShot(story, el) : studio.heroShot(el, ptr.x, ptr.y);
+    yaw += (yawT - yaw) * 0.08;
+    if (r.top < innerHeight * 0.98)
+        yawT *= 0.96; // ease back to the authored path when the story takes over
+    if (r.bottom < 0)
+        return; // story finished: content sections cover the canvas, skip rendering
+    const shot = r.top < innerHeight * 0.98 ? studio.storyShot(story, el) : studio.heroShot(el, ptr.x, ptr.y, yaw);
     frame(shot, INTRO + el, null);
 }
 if (rec) {

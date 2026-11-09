@@ -22,10 +22,38 @@ body.intro-on .nav, body.intro-on .v3-hero > *:not(.v3-status) { opacity: 0; poi
 .v3-chapter.on { opacity: 1; transform: none; }
 .v3-chapter span { font: 600 12px var(--body); letter-spacing: .16em; text-transform: uppercase; color: var(--em); }
 .v3-chapter h2 { font-size: clamp(24px, 2.6vw, 34px); margin-top: 10px; }
-.v3-outro { background: linear-gradient(180deg, transparent, var(--bg) 30%); }
 body.rec .nav, body.rec main, body.rec .v3-intro-ui { display: none; }
 @media (max-aspect-ratio: 4/5) {
   .v3-hero { justify-content: flex-start; padding-top: 108px; }
   .v3-chapter { top: 90px; bottom: auto; left: 16px; width: calc(100% - 32px); }
   .v3-status { top: auto; bottom: 90px; left: 24px; text-align: left; }
 }
+
+/* V3 homepage */
+.v3-hero { position: relative; cursor: grab; touch-action: pan-y; }
+.v3-hero.dragging { cursor: grabbing; }
+.v3-hero::before { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: linear-gradient(90deg, rgba(5, 8, 7, .78) 0%, rgba(5, 8, 7, .35) 40%, transparent 62%); }
+.v3-drag { position: absolute; right: max(24px, calc((100% - 1280px) / 2)); bottom: 74px; display: flex; gap: 10px; align-items: center; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--mute); margin: 0; }
+.v3-drag span { width: 34px; height: 1px; background: var(--em); position: relative; }
+.v3-drag span::after { content: ''; position: absolute; top: -3px; left: 0; width: 7px; height: 7px; border-radius: 50%; background: var(--em2); animation: drag 2.4s ease-in-out infinite; }
+@keyframes drag { 0%, 100% { left: 0; } 50% { left: 27px; } }
+.v3-loader { position: fixed; inset: 0; z-index: 20; display: grid; place-content: center; justify-items: center; gap: 22px; background: #050807; transition: opacity .8s; }
+.v3-loader.done { opacity: 0; pointer-events: none; }
+.v3-loader img { animation: pulse 1.6s ease-in-out infinite; }
+.v3-loader i { width: 160px; height: 2px; background: rgba(243, 247, 245, .1); overflow: hidden; }
+.v3-loader b { display: block; height: 100%; background: var(--em); transform: scaleX(0); transform-origin: left; transition: transform .3s; }
+@keyframes pulse { 50% { opacity: .55; transform: scale(.94); } }
+.v3-fallback { position: fixed; inset: 0; z-index: 0; background: radial-gradient(ellipse at 70% 60%, rgba(25, 211, 143, .16), transparent 55%), radial-gradient(ellipse at 20% 20%, rgba(91, 240, 182, .06), transparent 50%), #050807; }
+body.no-gl .v3-drag, body.no-gl #v3-replay { display: none; }
+.v3-story .story-bar { left: max(24px, calc((100% - 1280px) / 2)); bottom: 8vh; }
+.v3-final { position: relative; padding: clamp(110px, 16vw, 200px) 0; text-align: center; background: radial-gradient(ellipse at 50% 120%, rgba(25, 211, 143, .22), transparent 60%), #040605; overflow: hidden; }
+.v3-final h2 { max-width: 18ch; margin: 0 auto 30px; font-size: clamp(34px, 5.4vw, 72px); }
+.v3-final .cta { justify-content: center; }
+.v3-final::after { content: ''; position: absolute; left: -10%; right: -10%; bottom: 0; height: 1px; background: linear-gradient(90deg, transparent, var(--em), transparent); box-shadow: 0 0 40px 6px rgba(25, 211, 143, .5); }
+body.v3 main > section:not(.v3-hero):not(.v3-story) { z-index: 2; }
+@media (max-aspect-ratio: 4/5) {
+  .v3-hero::before { background: linear-gradient(180deg, rgba(5, 8, 7, .8) 0%, rgba(5, 8, 7, .3) 48%, transparent 62%); }
+  .v3-drag { bottom: 96px; left: 24px; right: auto; }
+  .v3-story .story-bar { top: 76px; bottom: auto; left: 16px; width: calc(100% - 32px); }
+}
+@media (prefers-reduced-motion: reduce) { .v3-loader img, .v3-drag span::after { animation: none; } }

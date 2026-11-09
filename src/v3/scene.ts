@@ -213,8 +213,8 @@ export class Studio3 {
       exposure: 1 - 0.55 * (sm(6.1, 6.6, t) - sm(7.15, 7.85, t)),
     };
   }
-  heroShot(el: number, px = 0, py = 0): Shot {
-    const h = this.hero(), ramp = sm(0, 2.5, el), a = Math.sin(el * 0.22) * 0.06 * ramp + px * 0.05;
+  heroShot(el: number, px = 0, py = 0, yaw = 0): Shot {
+    const h = this.hero(), ramp = sm(0, 2.5, el), a = Math.sin(el * 0.22) * 0.06 * ramp + px * 0.05 + yaw;
     const cx = h.pos[0] - h.tgt[0], cz = h.pos[2] - h.tgt[2];
     return {
       pos: [h.tgt[0] + cx * Math.cos(a) - cz * Math.sin(a), h.pos[1] + Math.sin(el * 0.31) * 0.04 * ramp - py * 0.06, h.tgt[2] + cx * Math.sin(a) + cz * Math.cos(a)],
