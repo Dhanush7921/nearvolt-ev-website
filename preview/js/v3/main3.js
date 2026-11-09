@@ -127,7 +127,7 @@ $('#v3-sound').addEventListener('click', (e) => {
 addEventListener('keydown', (e) => { if (e.key === 'Escape')
     endIntro(); });
 // ---------- scroll choreography (GSAP ScrollTrigger when available, manual fallback) ----------
-const storyEl = $('#v3-story');
+const storyEl = document.getElementById('experience') ?? $('#v3-story');
 const chapters = [...document.querySelectorAll('.v3-chapter')];
 const storyBar = document.getElementById('story-progress');
 function setStory(p) {
@@ -186,5 +186,9 @@ else {
         if (!reduced && !q.has('nointro') && (q.has('intro') || ss.get('nv3-intro') !== '1'))
             startIntro();
         requestAnimationFrame(loop);
+        if (typeof ScrollTrigger !== 'undefined')
+            ScrollTrigger.refresh(); // page height settles after the model, fonts and map load
     });
+    addEventListener('load', () => { if (typeof ScrollTrigger !== 'undefined')
+        ScrollTrigger.refresh(); });
 }
