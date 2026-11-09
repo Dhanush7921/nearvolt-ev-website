@@ -137,7 +137,7 @@ export class Studio3 {
 
     this.composer = new EffectComposer(r);
     this.composer.addPass(new RenderPass(this.scene, this.camera));
-    this.bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.55, 0.55, 0.86);
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.38, 0.5, 0.97);
     this.composer.addPass(this.bloom);
     this.composer.addPass(new OutputPass());
     this.layout();
@@ -239,10 +239,10 @@ export class Studio3 {
     c.fov = THREE.MathUtils.radToDeg(2 * Math.atan(1 / fy));
     c.aspect = a;
     c.position.set(...s.pos); c.lookAt(...s.tgt); c.updateProjectionMatrix();
-    L.key.intensity = 7 * s.lights; L.side.intensity = 5 * s.lights; L.rim.intensity = 8 * s.rim;
-    L.sun.intensity = 1.6 * s.lights; L.hemi.intensity = 0.08 * s.lights + 0.01;
+    L.key.intensity = 4.5 * s.lights; L.side.intensity = 3.5 * s.lights; L.rim.intensity = 8 * s.rim;
+    L.sun.intensity = 1.0 * s.lights; L.hemi.intensity = 0.08 * s.lights + 0.01;
     this.scene.environmentIntensity = 0.03 + 0.67 * s.lights;
-    this.renderer.toneMappingExposure = s.exposure;
+    this.renderer.toneMappingExposure = 0.82 * s.exposure;
     this.headSpots.forEach((sp) => { sp.intensity = 60 * s.head; });
     this.rig?.heads.forEach((m) => { m.emissiveIntensity = 6 * s.head; });
     this.rig?.tails.forEach((m) => { m.emissiveIntensity = 2.5 * s.head; });

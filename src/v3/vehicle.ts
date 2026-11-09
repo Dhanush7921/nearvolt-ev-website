@@ -10,7 +10,7 @@ export const VEHICLE = {
   url: 'models/vehicle.glb',
   length: 4.37, // metres after normalisation (BE 6-class crossover length)
   forward: 'auto' as 'auto' | '+z' | '-z' | '+x' | '-x', // nose direction in the source file
-  paintColor: '#e9ecec' as string | null, // null keeps the model's own paint
+  paintColor: '#d6dada' as string | null, // null keeps the model's own paint
   claddingColor: '#0c0e0e',
   /** Charge port: x side (>=0.5 = right/+X), y fraction of height, z fraction of half-length forward of centre. */
   port: { x: 0.5, y: 0.62, z: 0.2 },
@@ -70,7 +70,7 @@ export async function loadVehicle(url: string, env: THREE.Texture | null, onProg
       } else if (M.tail.test(key)) {
         m.emissive = new THREE.Color('#ff2a1a'); m.emissiveIntensity = 0; tails.push(m);
       } else if (M.paint.test(key)) {
-        const p = new THREE.MeshPhysicalMaterial({ color: VEHICLE.paintColor ?? m.color, metalness: 0.15, roughness: 0.28, clearcoat: 1, clearcoatRoughness: 0.04, normalMap: m.normalMap, aoMap: m.aoMap, envMap: env, envMapIntensity: 1.1 });
+        const p = new THREE.MeshPhysicalMaterial({ color: VEHICLE.paintColor ?? m.color, metalness: 0.15, roughness: 0.28, clearcoat: 1, clearcoatRoughness: 0.04, normalMap: m.normalMap, aoMap: m.aoMap, envMap: env, envMapIntensity: 0.85 });
         if (Array.isArray(mesh.material)) mesh.material[i] = p; else mesh.material = p;
       } else if (M.cladding.test(key)) {
         m.color?.set(VEHICLE.claddingColor); m.roughness = Math.max(m.roughness ?? 0.6, 0.55);
