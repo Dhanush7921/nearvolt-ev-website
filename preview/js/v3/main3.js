@@ -30,7 +30,7 @@ const size = () => {
 size();
 addEventListener('resize', size);
 const logo = new LogoFx(fxCanvas.getContext('2d'), fxCanvas.width, fxCanvas.height, portrait);
-const modelUrl = q.get('model') || (VEHICLE.enabled ? VEHICLE.url : null);
+const modelUrl = q.get('model') || (VEHICLE.enabled ? (high ? VEHICLE.url : VEHICLE.urlLite) : null);
 $('#v3-status').textContent = modelUrl ? 'Loading vehicle…' : 'Awaiting the approved licensed vehicle model — placeholder envelope shown.';
 const ready = studio.load(modelUrl, (p) => { $('#v3-status').textContent = `Loading vehicle ${Math.round(p * 100)}%`; })
     .then(() => { $('#v3-status').textContent = modelUrl ? '' : $('#v3-status').textContent; })

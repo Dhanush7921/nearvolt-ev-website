@@ -5,17 +5,19 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 export const VEHICLE = {
-    enabled: false, // true once the licensed GLB is committed
-    url: 'models/vehicle.glb',
-    length: 4.37, // metres after normalisation (BE 6-class crossover length)
+    enabled: true,
+    url: 'models/vehicle.glb', // 4K textures (desktop)
+    urlLite: 'models/vehicle-m.glb', // 2K textures (phones, low-end)
+    length: 4.55, // metres after normalisation
     forward: 'auto', // nose direction in the source file
-    paintColor: '#d6dada', // null keeps the model's own paint
+    paintColor: null, // null keeps the prepared paint atlas (pearl white, see scripts/car/prepare_goblin.py)
     claddingColor: '#0c0e0e',
     /** Charge port: x side (>=0.5 = right/+X), y fraction of height, z fraction of half-length forward of centre. */
     port: { x: 0.5, y: 0.62, z: 0.2 },
-    credit: '', // e.g. "“Model name” by Author, CC BY 4.0, source URL" — shown on legal.html
+    credit: '“Fictional supercar – V12 Goblin” by ollitei, CC BY 4.0, https://sketchfab.com/3d-models/fictional-supercar-v12-goblin-0a20e49ad5774d778567cb5c3f345786 (modified)',
     match: {
         paint: /paint|body|carpaint|exterior|shell/i,
+        shadow: /shadow/i,
         cladding: /cladding|trim|plastic|black|bumper_low|arch/i,
         glass: /glass|window|windshield|windscreen/i,
         head: /head.?(lamp|light)|drl|front.?light|lamp_f/i,
@@ -56,6 +58,16 @@ export async function loadVehicle(url, env, onProgress) {
             return;
         mesh.castShadow = true;
         mesh.receiveShadow = true;
+        if (M.shadow.test(`${mesh.material.name} ${mesh.name}`)) { // baked contact shadow from the source model
+            mesh.castShadow = false;
+            mesh.receiveShadow = false;
+            mesh.renderOrder = -1;
+            const sm = mesh.material;
+            sm.transparent = true;
+            sm.depthWrite = false;
+            sm.opacity = 0.85;
+            return;
+        }
         const mats = (Array.isArray(mesh.material) ? mesh.material : [mesh.material]);
         mats.forEach((m, i) => {
             const key = `${m.name} ${mesh.name}`;
@@ -81,7 +93,13 @@ export async function loadVehicle(url, env, onProgress) {
                 tails.push(m);
             }
             else if (M.paint.test(key)) {
-                const p = new THREE.MeshPhysicalMaterial({ color: VEHICLE.paintColor ?? m.color, metalness: 0.15, roughness: 0.28, clearcoat: 1, clearcoatRoughness: 0.04, normalMap: m.normalMap, aoMap: m.aoMap, envMap: env, envMapIntensity: 0.85 });
+                const keep = VEHICLE.paintColor === null; // atlas materials carry paint, trim and lamps in one texture set
+                const p = new THREE.MeshPhysicalMaterial({
+                    color: keep ? m.color : VEHICLE.paintColor, map: keep ? m.map : null,
+                    metalness: keep ? m.metalness : 0.15, roughness: keep ? m.roughness : 0.28,
+                    metalnessMap: keep ? m.metalnessMap : null, roughnessMap: keep ? m.roughnessMap : null,
+                    clearcoat: 1, clearcoatRoughness: 0.035, normalMap: m.normalMap, aoMap: m.aoMap, aoMapIntensity: 1, envMap: env, envMapIntensity: 0.95,
+                });
                 if (Array.isArray(mesh.material))
                     mesh.material[i] = p;
                 else
