@@ -139,16 +139,17 @@ function setStory(p) {
 }
 if (typeof gsap !== 'undefined' && typeof ScrollTrigger !== 'undefined' && !reduced) {
     gsap.registerPlugin(ScrollTrigger);
-    ScrollTrigger.create({ trigger: storyEl, start: 'top top', end: 'bottom bottom', scrub: 0.8, onUpdate: (s) => setStory(s.progress) });
     document.querySelectorAll('[data-split]').forEach((el) => {
         el.innerHTML = el.textContent.split(' ').map((w) => `<span class="w"><span>${w}</span></span>`).join(' ');
         gsap.from(el.querySelectorAll('.w > span'), { yPercent: 110, opacity: 0, duration: 1.1, ease: 'power4.out', stagger: 0.06, scrollTrigger: { trigger: el, start: 'top 85%' } });
     });
     gsap.utils.toArray('.v3-rise').forEach((el) => gsap.from(el, { y: 40, opacity: 0, duration: 1, ease: 'power3.out', scrollTrigger: { trigger: el, start: 'top 88%' } }));
 }
-else {
-    addEventListener('scroll', () => { const r = storyEl.getBoundingClientRect(); setStory(Math.min(1, Math.max(0, -r.top / (r.height - innerHeight)))); }, { passive: true });
-}
+// story progress is measured directly each frame (robust to late layout changes) and eased for a scrubbed feel
+let storyTarget = 0;
+const measureStory = () => { const r = storyEl.getBoundingClientRect(); storyTarget = Math.min(1, Math.max(0, -r.top / (r.height - innerHeight))); };
+addEventListener('scroll', measureStory, { passive: true });
+addEventListener('resize', measureStory);
 // ---------- loop ----------
 function loop(now) {
     requestAnimationFrame(loop);
@@ -168,6 +169,7 @@ function loop(now) {
     }
     const el = reduced ? 0 : (now - heroStart) / 1000;
     const r = storyEl.getBoundingClientRect();
+    setStory(reduced ? storyTarget : story + (storyTarget - story) * 0.12);
     yaw += (yawT - yaw) * 0.08;
     if (r.top < innerHeight * 0.98)
         yawT *= 0.96; // ease back to the authored path when the story takes over
