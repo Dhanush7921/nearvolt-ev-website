@@ -198,7 +198,7 @@ export class Studio3 {
     const d = this.dims;
     return this.portrait
       ? { pos: [d.x * 3.2, 2.2, d.z * 2.35], tgt: [0.5, d.y * 0.36, 0], fov: 46 }
-      : { pos: [d.x * 3.4, 1.3, d.z * 1.25], tgt: [-0.75 * d.x, d.y * 0.5, -0.32 * d.z], fov: 29 };
+      : { pos: [d.x * 3.4, 1.3, d.z * 1.25], tgt: [-0.62 * d.x, d.y * 0.48, 0.27 * d.z], fov: 29 };
   }
 
   introShot(t: number): Shot {
