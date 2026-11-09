@@ -15,7 +15,7 @@ import io, json, struct, sys
 import numpy as np
 from PIL import Image
 
-PAINT = np.array([0.86, 0.875, 0.87])  # pearl white (linear-ish sRGB values)
+PAINT = np.array([0.78, 0.795, 0.79])  # pearl white (linear-ish sRGB values)
 SRC, OUT = sys.argv[1], sys.argv[2]
 
 raw = open(SRC, 'rb').read()
@@ -90,9 +90,9 @@ def convert(max_size):
             r, g, b = spec[..., 0], spec[..., 1], spec[..., 2]
             paint = (smax > 0.12) & (g > r * 1.25) & (g > b * 1.25)
             base[paint] = PAINT
-            metal[paint] = 0.35
+            metal[paint] = 0.5
             rough = 1 - gloss
-            rough[paint] = 0.32
+            rough[paint] = 0.27
             base_img = Image.fromarray((np.clip(base, 0, 1) * 255).astype(np.uint8))
             mr = np.zeros((*rough.shape, 3), np.uint8)
             mr[..., 0] = 255

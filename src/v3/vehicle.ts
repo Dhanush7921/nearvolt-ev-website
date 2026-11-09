@@ -10,7 +10,8 @@ export const VEHICLE = {
   url: 'models/vehicle.glb', // 4K textures (desktop)
   urlLite: 'models/vehicle-m.glb', // 2K textures (phones, low-end)
   length: 4.55, // metres after normalisation
-  forward: 'auto' as 'auto' | '+z' | '-z' | '+x' | '-x', // nose direction in the source file
+  forward: 'auto' as 'auto' | '+z' | '-z' | '+x' | '-x', // long axis in the source file
+  reverse: true, // the Goblin's nose points down the negative long axis
   paintColor: null as string | null, // null keeps the prepared paint atlas (pearl white, see scripts/car/prepare_goblin.py)
   claddingColor: '#0c0e0e',
   /** Charge port: x side (>=0.5 = right/+X), y fraction of height, z fraction of half-length forward of centre. */
@@ -28,6 +29,17 @@ export const VEHICLE = {
 
 export type Rig = { root: THREE.Object3D; size: THREE.Vector3; heads: THREE.MeshStandardMaterial[]; tails: THREE.MeshStandardMaterial[]; port: THREE.Vector3; headPos: THREE.Vector3[] };
 
+/** Bounds of the body only: baked shadow planes are much larger than the car and would skew scale and anchors. */
+function bodyBox(root: THREE.Object3D) {
+  const box = new THREE.Box3();
+  root.updateMatrixWorld(true);
+  root.traverse((o: THREE.Object3D) => {
+    const m = o as THREE.Mesh;
+    if (m.isMesh && !VEHICLE.match.shadow.test(`${(m.material as THREE.MeshStandardMaterial).name} ${m.name}`)) box.union(new THREE.Box3().setFromObject(m));
+  });
+  return box;
+}
+
 export async function loadVehicle(url: string, env: THREE.Texture | null, onProgress?: (p: number) => void): Promise<Rig> {
   const draco = new DRACOLoader().setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/libs/draco/gltf/');
   const loader = new GLTFLoader().setDRACOLoader(draco).setMeshoptDecoder(MeshoptDecoder);
@@ -35,23 +47,20 @@ export async function loadVehicle(url: string, env: THREE.Texture | null, onProg
   const src: THREE.Object3D = gltf.scene;
 
   // orientation: nose to +Z
-  let box = new THREE.Box3().setFromObject(src);
+  let box = bodyBox(src);
   const s = box.getSize(new THREE.Vector3());
   const f = VEHICLE.forward === 'auto' ? (s.x > s.z ? '+x' : '+z') : VEHICLE.forward;
-  const rotY = { '+z': 0, '-z': Math.PI, '+x': -Math.PI / 2, '-x': Math.PI / 2 }[f];
+  const rotY = { '+z': 0, '-z': Math.PI, '+x': -Math.PI / 2, '-x': Math.PI / 2 }[f] + (VEHICLE.reverse ? Math.PI : 0);
   const pivot = new THREE.Group();
   pivot.add(src);
   src.rotation.y = rotY;
-  pivot.updateMatrixWorld(true);
-  box = new THREE.Box3().setFromObject(pivot);
+  box = bodyBox(pivot);
   const k = VEHICLE.length / box.getSize(new THREE.Vector3()).z;
   src.scale.multiplyScalar(k);
-  pivot.updateMatrixWorld(true);
-  box = new THREE.Box3().setFromObject(pivot);
+  box = bodyBox(pivot);
   const c = box.getCenter(new THREE.Vector3());
   src.position.x -= c.x; src.position.z -= c.z; src.position.y -= box.min.y;
-  pivot.updateMatrixWorld(true);
-  box = new THREE.Box3().setFromObject(pivot);
+  box = bodyBox(pivot);
   const size = box.getSize(new THREE.Vector3());
 
   const heads: THREE.MeshStandardMaterial[] = [], tails: THREE.MeshStandardMaterial[] = [];
