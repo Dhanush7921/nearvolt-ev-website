@@ -1,4 +1,5 @@
-// V3 hero lab: real-time 8 s intro → identical live hero → GSAP scroll choreography.
+// V3: live 3D hero + GSAP scroll choreography. The intro is the pre-rendered Home Plug film (see film.ts); the hero
+// stays idle under it and loads its model only once the film is playing, so the two never compete.
 import { LogoFx } from '../logoFx.js';
 import { INTRO, Studio3, type Shot } from './scene.js';
 import { VEHICLE } from './vehicle.js';
@@ -25,7 +26,6 @@ function gpuTier(): 'high' | 'mid' | 'low' {
 }
 const tier = gpuTier();
 const high = tier === 'high';
-const ss = { get: (k: string) => { try { return sessionStorage.getItem(k); } catch { return null; } }, set: (k: string, v: string) => { try { sessionStorage.setItem(k, v); } catch { /* blocked */ } } };
 
 const canvas = $<HTMLCanvasElement>('#v3-gl');
 const fxCanvas = $<HTMLCanvasElement>('#v3-fx');
@@ -43,7 +43,20 @@ const logo = new LogoFx(fxCanvas.getContext('2d')!, fxCanvas.width, fxCanvas.hei
 
 const modelUrl = q.get('model') || (VEHICLE.enabled ? (high ? VEHICLE.url : VEHICLE.urlLite) : null);
 const bar = document.getElementById('v3-load-bar');
-const ready = studio.load(modelUrl, (p) => { if (bar) bar.style.transform = `scaleX(${p})`; })
+type FilmApi = { active: () => boolean; started: () => boolean; play: () => void };
+const film = (window as unknown as { __nvFilm?: FilmApi }).__nvFilm;
+const filmOn = () => !!film?.active();
+// start the model download now, or once the film is playing (its first seconds get the bandwidth)
+let kick!: () => void;
+const kicked = new Promise<void>((r) => (kick = r));
+if (!rec && filmOn()) {
+  // this module waits for three.js from the CDN, so the film may already be playing by now
+  if (film!.started()) setTimeout(kick, 1200);
+  else addEventListener('nv3:film-playing', () => setTimeout(kick, 1200), { once: true });
+  addEventListener('nv3:film-end', () => kick(), { once: true });
+} else kick();
+addEventListener('nv3:film-end', () => { heroStart = performance.now(); });
+const ready = kicked.then(() => studio.load(modelUrl, (p) => { if (bar) bar.style.transform = `scaleX(${p})`; }))
   .then(() => { document.getElementById('v3-loader')?.classList.add('done'); setTimeout(() => document.getElementById('v3-loader')?.remove(), 900); })
   .catch(() => { fail(); throw new Error('vehicle'); });
 
@@ -52,8 +65,7 @@ const ref = q.get('ref');
 if (ref) { const g = $<HTMLImageElement>('#v3-ref'); g.src = ref; g.hidden = false; addEventListener('keydown', (e) => { if (e.key === 'g') g.hidden = !g.hidden; }); }
 
 // ---------- timeline ----------
-type Mode = 'intro' | 'hero';
-let mode: Mode = 'hero', t0 = performance.now(), heroStart = performance.now();
+let heroStart = performance.now();
 const ptr = { x: 0, y: 0, tx: 0, ty: 0 };
 if (fine && !reduced) addEventListener('pointermove', (e) => { ptr.tx = e.clientX / innerWidth * 2 - 1; ptr.ty = e.clientY / innerHeight * 2 - 1; }, { passive: true });
 let story = 0;
@@ -64,7 +76,6 @@ heroEl.addEventListener('pointerdown', (e) => { if ((e.target as HTMLElement).cl
 heroEl.addEventListener('pointermove', (e) => { if (dragX === null) return; yawT += (e.clientX - dragX) / innerWidth * 3.2; dragX = e.clientX; });
 const endDrag = () => { dragX = null; heroEl.classList.remove('dragging'); };
 heroEl.addEventListener('pointerup', endDrag); heroEl.addEventListener('pointercancel', endDrag);
-const audio = $<HTMLAudioElement>('#v3-audio');
 
 function frame(shot: Shot, time: number, introT: number | null) {
   studio.render(shot, time);
@@ -72,26 +83,6 @@ function frame(shot: Shot, time: number, introT: number | null) {
   logo.draw(introT ?? -1, p); // clears itself outside the logo window
 }
 
-function startIntro() {
-  mode = 'intro'; t0 = performance.now();
-  document.body.classList.add('intro-on');
-  if (!audio.muted) { audio.currentTime = 0; audio.play().catch(() => {}); }
-}
-function endIntro() {
-  if (mode !== 'intro') return;
-  mode = 'hero'; heroStart = performance.now(); ss.set('nv3-intro', '1');
-  document.body.classList.remove('intro-on');
-  audio.pause();
-}
-$('#v3-skip').addEventListener('click', endIntro);
-$('#v3-replay').addEventListener('click', () => { scrollTo({ top: 0 }); startIntro(); });
-$('#v3-sound').addEventListener('click', (e) => {
-  audio.muted = !audio.muted;
-  (e.currentTarget as HTMLElement).setAttribute('aria-pressed', String(!audio.muted));
-  (e.currentTarget as HTMLElement).querySelector('.lbl')!.textContent = audio.muted ? 'Sound off' : 'Sound on';
-  if (!audio.muted && mode === 'intro') { audio.currentTime = (performance.now() - t0) / 1000; audio.play().catch(() => {}); }
-});
-addEventListener('keydown', (e) => { if (e.key === 'Escape') endIntro(); });
 
 // ---------- scroll choreography (GSAP ScrollTrigger when available, manual fallback) ----------
 const storyEl = document.getElementById('experience') ?? $('#v3-story');
@@ -120,14 +111,8 @@ addEventListener('resize', measureStory);
 // ---------- loop ----------
 function loop(now: number) {
   requestAnimationFrame(loop);
-  if (!studio.ready || document.hidden) return;
+  if (!studio.ready || document.hidden || filmOn()) return; // idle under the intro film
   ptr.x += (ptr.tx - ptr.x) * 0.05; ptr.y += (ptr.ty - ptr.y) * 0.05;
-  if (mode === 'intro') {
-    const t = (now - t0) / 1000;
-    if (t >= INTRO) { frame(studio.heroShot(0), INTRO, null); endIntro(); return; }
-    frame(studio.introShot(t), t, t);
-    return;
-  }
   const el = reduced ? 0 : (now - heroStart) / 1000;
   const r = storyEl.getBoundingClientRect();
   setStory(reduced ? storyTarget : story + (storyTarget - story) * 0.12);
@@ -144,7 +129,6 @@ if (rec) {
   Object.assign(window, { __ready: ready, __len: INTRO, __frame: (t: number) => { const s = t >= INTRO ? studio.heroShot(0) : studio.introShot(t); frame(s, t, t); } });
 } else {
   ready.then(() => {
-    if (!reduced && !q.has('nointro') && (q.has('intro') || ss.get('nv3-intro') !== '1')) startIntro();
     requestAnimationFrame(loop);
     if (typeof ScrollTrigger !== 'undefined') ScrollTrigger.refresh(); // page height settles after the model, fonts and map load
   });

@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#060908">
 <meta property="og:title" content="NEARVOLT EV — Charging, closer to you">
 <meta property="og:description" content="A peer-to-peer EV charging discovery concept, in its pre-launch demonstration phase.">
-<meta property="og:image" content="video/nearvolt-intro-poster.jpg">
+<meta property="og:image" content="video/v3/poster-land.jpg">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="brand/app-icon-512.png">
 <link rel="stylesheet" href="styles/main.css">
@@ -26,7 +26,11 @@
 <canvas id="v3-fx" aria-hidden="true"></canvas>
 <div class="v3-fallback" id="v3-fallback" hidden></div>
 <div class="v3-loader" id="v3-loader" aria-hidden="true"><img src="brand/mark.svg" alt="" width="56" height="56"><i><b id="v3-load-bar"></b></i></div>
-<audio id="v3-audio" preload="auto" muted><source src="audio/nearvolt-intro.ogg" type="audio/ogg"><source src="audio/nearvolt-intro.m4a" type="audio/mp4"></audio>
+<div class="v3-film" id="v3-film" role="region" aria-label="NEARVOLT EV introduction film" hidden>
+  <video id="v3-film-video" muted playsinline preload="auto" disablepictureinpicture disableremoteplayback aria-hidden="true"></video>
+  <p class="sr">An 18-second concept film. A driver is low on charge, finds nearby home chargers in the NEARVOLT EV app, reserves a slot, arrives at a host’s home driveway and plugs into a wall-mounted charger. The camera rises over the neighbourhood to show a network of home chargers, ending on the NEARVOLT EV logo and the line “EV charging, closer to home.” All app details shown are an illustrative concept demo.</p>
+  <div class="v3-film-bar" aria-hidden="true"><i id="v3-film-bar"></i></div>
+</div>
 <div class="v3-intro-ui">
   <button class="pill ghost" id="v3-sound" type="button" aria-pressed="false"><span class="ico-sound" aria-hidden="true"></span><span class="lbl">Sound off</span></button>
   <button class="pill" id="v3-skip" type="button">Skip intro <span aria-hidden="true">→</span></button>
@@ -286,6 +290,7 @@
   // if the 3D module (three.js from CDN) cannot start, never leave the loader up: show the static fallback
   setTimeout(function () { if (!window.__nv3) { var l = document.getElementById('v3-loader'); if (l) l.remove(); document.getElementById('v3-fallback').hidden = false; document.body.classList.add('no-gl'); } }, 9000);
 </script>
+<script type="module" src="js/v3/film.js"></script>
 <script type="module" src="js/v3/site.js"></script>
 <script type="module" src="js/v3/main3.js"></script>
 </body>

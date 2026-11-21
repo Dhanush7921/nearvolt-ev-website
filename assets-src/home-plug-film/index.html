@@ -1,0 +1,178 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<style>
+  @font-face { font-family: 'Unbounded'; src: url('/fonts/unbounded-var.woff') format('woff'); font-weight: 200 900; }
+  @font-face { font-family: 'Inst'; src: url('/fonts/instrument-sans-var.woff') format('woff'); font-weight: 400 700; }
+  html, body { margin: 0; background: #000; overflow: hidden; }
+  #stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: #0c1513; font-family: 'Inst', sans-serif; color: #fff; }
+  #gl { position: absolute; inset: 0; width: 1920px; height: 1080px; display: block; transform-origin: 50% 50%; }
+  #vig { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse 80% 75% at 50% 45%, rgba(0,0,0,0) 55%, rgba(0,0,0,0.38) 100%); }
+  #grad { position: absolute; left: 0; right: 0; bottom: 0; height: 420px; background: linear-gradient(0deg, rgba(4,14,12,0.62), rgba(4,14,12,0)); pointer-events: none; }
+
+  /* captions */
+  #cap { position: absolute; left: 128px; bottom: 132px; visibility: hidden; }
+  #capline { width: 64px; height: 3px; border-radius: 2px; background: #2fd68f; transform-origin: 0 50%; margin-bottom: 22px; box-shadow: 0 0 14px rgba(47,214,143,0.8); }
+  #captext { font-family: 'Unbounded', sans-serif; font-weight: 600; font-size: 66px; line-height: 1.12; letter-spacing: -0.01em; text-shadow: 0 2px 24px rgba(0,0,0,0.35); }
+  #captext .ln { display: block; }
+  #captext .w { display: inline-block; overflow: hidden; vertical-align: bottom; padding-bottom: 0.06em; }
+  #captext .wi { display: inline-block; }
+
+  /* low battery chip */
+  #battery { position: absolute; left: 128px; top: 112px; display: flex; align-items: center; gap: 22px; padding: 22px 30px 22px 24px; border-radius: 22px;
+    background: rgba(12,22,20,0.55); backdrop-filter: blur(14px); border: 1px solid rgba(255,255,255,0.14); opacity: 0; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+  #battery .cell { width: 74px; height: 36px; border: 3px solid #fff; border-radius: 9px; position: relative; padding: 4px; box-sizing: border-box; }
+  #battery .cell::after { content: ''; position: absolute; right: -10px; top: 9px; width: 6px; height: 12px; border-radius: 0 3px 3px 0; background: #fff; }
+  #battery .fill { width: 12%; height: 100%; border-radius: 4px; background: #ff5a4e; box-shadow: 0 0 12px #ff5a4e; }
+  #battery.blink .fill { opacity: 0.35; }
+  #battery .k { font-size: 17px; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(255,255,255,0.7); }
+  #batpct { font-family: 'Unbounded', sans-serif; font-weight: 600; font-size: 44px; color: #ff7a6e; line-height: 1; }
+  #battery .range { font-size: 22px; color: rgba(255,255,255,0.85); margin-top: 6px; }
+
+  /* map interface */
+  #map { position: absolute; inset: 0; opacity: 0; }
+  #mapframe { position: absolute; inset: 0; overflow: hidden; background: #0d1715; }
+  #mapsvg { position: absolute; left: -10%; top: -18%; width: 120%; height: 136%; transform-origin: 50% 60%; }
+  #mapsvg svg { width: 100%; height: 100%; }
+  #maphead { position: absolute; left: 128px; top: 104px; display: flex; align-items: center; gap: 18px; font-size: 22px; color: rgba(255,255,255,0.8); }
+  #maphead b { font-family: 'Unbounded', sans-serif; font-weight: 600; font-size: 24px; color: #fff; letter-spacing: 0.02em; }
+  .demo { font-size: 15px; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(218,241,222,0.75); border: 1px solid rgba(218,241,222,0.3); border-radius: 999px; padding: 6px 14px; }
+  #sheet { position: absolute; right: 128px; top: 170px; width: 560px; border-radius: 30px; padding: 30px; background: rgba(13,26,23,0.82); backdrop-filter: blur(18px);
+    border: 1px solid rgba(255,255,255,0.12); box-shadow: 0 40px 90px rgba(0,0,0,0.45); }
+  #sheet h3 { margin: 0 0 6px; font-family: 'Unbounded', sans-serif; font-weight: 600; font-size: 30px; }
+  #sheet .sub { font-size: 20px; color: rgba(255,255,255,0.65); margin-bottom: 22px; }
+  .row { display: flex; align-items: center; gap: 18px; padding: 18px; border-radius: 18px; background: rgba(255,255,255,0.05); margin-top: 12px; }
+  .row.best { background: rgba(47,214,143,0.14); border: 1px solid rgba(47,214,143,0.45); }
+  .ic { width: 52px; height: 52px; border-radius: 14px; background: #1c3a32; display: grid; place-items: center; }
+  .ic svg { width: 28px; height: 28px; }
+  .row .t { flex: 1; font-size: 22px; font-weight: 600; }
+  .row .t small { display: block; font-weight: 400; font-size: 17px; color: rgba(255,255,255,0.6); margin-top: 4px; }
+  .row .d { font-family: 'Unbounded', sans-serif; font-size: 22px; font-weight: 600; color: #2fd68f; }
+  .row .d small { display: block; font-family: 'Inst'; font-size: 15px; font-weight: 500; color: rgba(255,255,255,0.55); text-align: right; }
+
+  /* phone */
+  #phone { position: absolute; left: 66%; top: 50%; width: 430px; height: 880px; border-radius: 64px; background: #050807; padding: 14px; box-sizing: border-box; opacity: 0;
+    box-shadow: 0 60px 120px rgba(0,0,0,0.55), inset 0 0 0 2px #2a302e; transform-style: preserve-3d; }
+  #screen { position: relative; width: 100%; height: 100%; border-radius: 52px; overflow: hidden; background: #0e1916; }
+  #notch { position: absolute; left: 50%; top: 14px; width: 120px; height: 34px; border-radius: 20px; background: #000; transform: translateX(-50%); z-index: 3; }
+  #photo { height: 300px; background-size: cover; background-position: 50% 60%; position: relative; }
+  #photo::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(14,25,22,0) 50%, #0e1916); }
+  #pbody { padding: 0 26px; position: relative; margin-top: -40px; }
+  #pbody .tag { display: inline-flex; gap: 8px; align-items: center; font-size: 14px; font-weight: 600; color: #2fd68f; background: rgba(47,214,143,0.14); border-radius: 999px; padding: 6px 12px; }
+  #pbody h4 { margin: 12px 0 4px; font-family: 'Unbounded', sans-serif; font-weight: 600; font-size: 24px; }
+  #pbody .meta { font-size: 15px; color: rgba(255,255,255,0.62); }
+  .spec { display: flex; gap: 8px; margin: 16px 0 18px; }
+  .spec div { flex: 1; background: rgba(255,255,255,0.06); border-radius: 14px; padding: 10px; font-size: 12px; color: rgba(255,255,255,0.6); }
+  .spec b { display: block; font-size: 16px; color: #fff; margin-top: 2px; }
+  .lbl { font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255,255,255,0.55); margin-bottom: 10px; }
+  .slots { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .slot { text-align: center; padding: 12px 0; border-radius: 12px; background: rgba(255,255,255,0.06); font-size: 15px; font-weight: 600; border: 1px solid transparent; }
+  .slot.off { color: rgba(255,255,255,0.28); text-decoration: line-through; }
+  .slot.on { background: rgba(47,214,143,0.2); border-color: #2fd68f; color: #b9f5d9; }
+  #cta { margin-top: 20px; height: 56px; border-radius: 16px; background: #2fd68f; color: #05201a; font-weight: 700; font-size: 18px; display: grid; place-items: center; transition: none; }
+  #cta.press { transform: scale(0.97); filter: brightness(0.92); }
+  #pfoot { text-align: center; font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 12px; letter-spacing: 0.06em; }
+  #confirm { position: absolute; inset: 0; background: rgba(9,20,17,0.94); display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0; z-index: 2; }
+  #confirm .ok { width: 112px; height: 112px; border-radius: 50%; background: rgba(47,214,143,0.16); display: grid; place-items: center; box-shadow: 0 0 0 10px rgba(47,214,143,0.07); }
+  #confirm h5 { margin: 26px 0 8px; font-family: 'Unbounded', sans-serif; font-weight: 600; font-size: 26px; }
+  #confirm p { margin: 0; font-size: 16px; color: rgba(255,255,255,0.65); text-align: center; line-height: 1.5; }
+  #tap { position: absolute; width: 70px; height: 70px; border-radius: 50%; border: 3px solid rgba(255,255,255,0.9); background: rgba(255,255,255,0.18); opacity: 0; z-index: 4; pointer-events: none; }
+
+  /* charging chip */
+  #charge { position: absolute; right: 128px; top: 112px; width: 420px; padding: 26px 28px; border-radius: 24px; background: rgba(10,22,19,0.6); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.14); opacity: 0; }
+  #charge .k { font-size: 16px; letter-spacing: 0.18em; text-transform: uppercase; color: #8ff0c4; display: flex; align-items: center; gap: 10px; }
+  #charge .k::before { content: ''; width: 10px; height: 10px; border-radius: 50%; background: #2fd68f; box-shadow: 0 0 10px #2fd68f; }
+  #chargepct { font-family: 'Unbounded', sans-serif; font-weight: 600; font-size: 60px; margin: 10px 0 14px; }
+  #chargetrack { height: 8px; border-radius: 4px; background: rgba(255,255,255,0.14); overflow: hidden; }
+  #chargebar { height: 100%; background: linear-gradient(90deg, #1fbf7a, #8ff0c4); transform-origin: 0 50%; }
+  #charge .f { display: flex; justify-content: space-between; font-size: 16px; color: rgba(255,255,255,0.6); margin-top: 12px; }
+
+  /* logo + hero */
+  #logo { position: absolute; inset: 0; background: radial-gradient(ellipse 70% 70% at 50% 45%, #0f2d27 0%, #061512 70%); display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0; }
+  #logomark svg { width: 980px; height: auto; display: block; overflow: visible; }
+  #tagline { margin-top: 44px; font-size: 30px; letter-spacing: 0.32em; text-transform: uppercase; color: #bfe7cf; font-weight: 500; }
+  #hero { position: absolute; inset: 0; opacity: 0; background-size: cover; background-position: center; }
+  #fade { position: absolute; inset: 0; opacity: 0; pointer-events: none; }
+  #logomark svg { width: 940px; }
+
+  /* ---------- portrait (phones): separately composed layout ---------- */
+  body.portrait #cap { left: 72px; right: 72px; bottom: 210px; }
+  body.portrait #captext { font-size: 64px; }
+  body.portrait #grad { height: 760px; }
+  body.portrait #battery { left: 64px; top: 150px; }
+  body.portrait #maphead { left: 72px; top: 150px; }
+  body.portrait #sheet { left: 56px; right: 56px; top: 250px; width: auto; }
+  body.portrait #mapsvg { left: -40%; top: -10%; width: 180%; height: 120%; }
+  body.portrait #phone { left: 50%; top: 46%; width: 520px; height: 1064px; border-radius: 76px; padding: 16px; }
+  body.portrait #screen { border-radius: 62px; }
+  body.portrait #photo { height: 380px; }
+  body.portrait #pbody h4 { font-size: 30px; }
+  body.portrait #pbody .meta, body.portrait .slot { font-size: 19px; }
+  body.portrait .spec div { font-size: 15px; } body.portrait .spec b { font-size: 20px; }
+  body.portrait #cta { height: 70px; font-size: 22px; }
+  body.portrait #charge { right: 56px; left: 56px; width: auto; top: 150px; }
+  body.portrait #logomark svg { width: 860px; }
+  body.portrait #tagline { font-size: 27px; letter-spacing: 0.2em; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="gl" width="1920" height="1080"></canvas>
+  <div id="vig"></div>
+  <div id="grad"></div>
+
+  <div id="battery">
+    <div class="cell"><div class="fill"></div></div>
+    <div><div class="k">Battery low</div><div style="display:flex;align-items:baseline;gap:16px"><div id="batpct">8%</div><div class="range">· 18 km range</div></div></div>
+  </div>
+
+  <div id="map">
+    <div id="mapframe"><div id="mapsvg"></div></div>
+    <div id="maphead"><img src="/brand/logo-on-dark.svg" alt="" style="height:40px;display:block"><span class="demo">Concept demo</span></div>
+    <div id="sheet">
+      <h3>3 home chargers nearby</h3>
+      <div class="sub">Compatible with your car · Type 2 AC</div>
+      <div class="row best"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#2fd68f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11 12 4l9 7v9H3z"/><path d="m12 10-2 4h4l-2 4"/></svg></div><div class="t">Home charger · Seethammadhara<small>7.4 kW · Available now</small></div><div class="d">1.2 km<small>4 min</small></div></div>
+      <div class="row"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#8ff0c4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11 12 4l9 7v9H3z"/><path d="m12 10-2 4h4l-2 4"/></svg></div><div class="t">Home charger · MVP Colony<small>3.3 kW · From 7:30 PM</small></div><div class="d">1.9 km<small>6 min</small></div></div>
+      <div class="row"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#8ff0c4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11 12 4l9 7v9H3z"/><path d="m12 10-2 4h4l-2 4"/></svg></div><div class="t">Home charger · Dwaraka Nagar<small>7.4 kW · Available now</small></div><div class="d">2.6 km<small>8 min</small></div></div>
+    </div>
+  </div>
+
+  <div id="phone"><div id="screen">
+    <div id="notch"></div>
+    <div id="photo"></div>
+    <div id="pbody">
+      <span class="tag">● Available · Compatible</span>
+      <h4>Home charger</h4>
+      <div class="meta">Seethammadhara · 1.2 km · Host verified</div>
+      <div class="spec"><div>Connector<b>Type 2</b></div><div>Power<b>7.4 kW</b></div><div>Parking<b>Driveway</b></div></div>
+      <div class="lbl">Pick a slot · Today</div>
+      <div class="slots"><div class="slot off">6:00 PM</div><div class="slot">7:00 PM</div><div class="slot">8:00 PM</div></div>
+      <div id="cta">Reserve 7:00 PM slot</div>
+      <div id="pfoot">CONCEPT DEMO · ILLUSTRATIVE DETAILS</div>
+    </div>
+    <div id="confirm">
+      <div class="ok"><svg width="58" height="58" viewBox="0 0 24 24" fill="none" stroke="#2fd68f" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></div>
+      <h5>Slot reserved</h5>
+      <p>Today · 7:00 – 8:00 PM<br/>Home charger · 1.2 km away</p>
+    </div>
+    <div id="tap"></div>
+  </div></div>
+
+  <div id="charge">
+    <div class="k">Charging · Home charger</div>
+    <div id="chargepct">8%</div>
+    <div id="chargetrack"><div id="chargebar"></div></div>
+    <div class="f"><span>Type 2 · 7.4 kW</span><span>Concept demo</span></div>
+  </div>
+
+  <div id="cap"><div id="capline"></div><div id="captext"></div></div>
+
+  <div id="logo"><div id="logomark"></div><div id="tagline">EV charging, closer to home.</div></div>
+  <div id="hero"></div>
+  <div id="fade"></div>
+</div>
+<script src="/film.js"></script>
+</body>
+</html>

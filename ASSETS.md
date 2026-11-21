@@ -3,7 +3,8 @@
 | Asset | Path | Source | Licence | Notes |
 |---|---|---|---|---|
 | Concept car 3D model | `public/models/ev-concept.glb` | “Car Concept”, Khronos glTF Sample Assets — © 2024 Darmstadt Graphics Group GmbH, artist Eric Chadwick; based on a CC0 model by Unity Fan | CC BY 4.0 | Reused from V1 (already stripped of Khronos/3D Commerce logos, plate and parts; textures recompressed; quantised). Recoloured at runtime. Credited on `legal.html`. Logo-free, not a production vehicle. |
-| Intro film (MP4/WebM, 1080p/720p/portrait) and posters | `public/video/` | Original — rendered from this site's WebGL scene by `scripts/render-intro.mjs` | Project | Contains the CC BY car above (credited). |
+| V3 “Home Plug” intro film (MP4/WebM: 1080p60, 720p, portrait 1080×1920/720×1280) and posters | `public/video/v3/` | Original 3D CGI rendered offline (three.js, headless) from an original residential scene; UI, map and score original | Project | Contains the CC BY car above (credited). Illustrative concept-demo values only. |
+| V2 intro film (MP4/WebM, 1080p/720p/portrait) and posters — used by `v2.html` only | `public/video/` | Original — rendered from this site's WebGL scene by `scripts/render-intro.mjs` | Project | Contains the CC BY car above (credited). |
 | Intro sound design | `assets-src/intro-audio.wav` (muxed into the videos) | Original — synthesised by `scripts/make_audio.py` | Project | No samples, no third-party music. |
 | Logo, symbol, favicon, app icons | `public/brand/*`, `public/favicon.svg`, `src/brand.ts` | Original — `scripts/build_logo.py` | Project | Wordmark outlined from Unbounded (OFL permits outlining). |
 | Charger, connector, cable, inlet ring, energy particles, floor | `src/engine/studio.ts`, `shaders.ts` | Original procedural | Project | |
