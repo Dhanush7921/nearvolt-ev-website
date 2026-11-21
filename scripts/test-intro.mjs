@@ -50,7 +50,7 @@ async function page(ctxOpts, opts = {}) {
   const lt = await p.evaluate(() => window.__lt);
   res.desktopEnd = { ...end, droppedPct: mid.total ? +(100 * end.dropped / Math.max(1, end.total)).toFixed(1) : null };
   check('Desktop: film ends and hands over to the hero', !end.shown && !end.introOn && end.seen === '1');
-  const heroVisible = await p.evaluate(() => getComputedStyle(document.querySelector('.v3-hero h1')).opacity === '1' && getComputedStyle(document.querySelector('.nav')).opacity === '1');
+  const heroVisible = await p.waitForFunction(() => getComputedStyle(document.querySelector('.v3-hero h1')).opacity === '1' && getComputedStyle(document.querySelector('.nav')).opacity === '1', null, { timeout: 2500 }).then(() => true, () => false);
   check('Hero headline and navigation visible after the film', heroVisible);
   const model = reqs.find((r) => /models\/vehicle/.test(r.url));
   check('3D model downloads only after the film has started (no competition at start-up)', !!model && model.at > 1500, model ? `model finished ${(model.at / 1000).toFixed(1)} s` : 'not loaded');
@@ -67,6 +67,15 @@ async function page(ctxOpts, opts = {}) {
   await p.keyboard.press('Escape'); await p.waitForTimeout(900);
   check('Esc skips the film', !(await film(p)).shown);
   void modelEarly;
+  await ctx.close();
+}
+// 1b. large desktop: sharper 1440p cut (downscaled from the native 4K render)
+{
+  const { ctx, p } = await page({ viewport: { width: 2560, height: 1440 } });
+  await p.goto(base, { waitUntil: 'domcontentloaded' });
+  await p.waitForFunction(() => document.getElementById('v3-film-video').currentTime > 0.5, null, { timeout: 20000 }).catch(() => {});
+  const s = await film(p);
+  check('Large desktop: 1440p60 film playing', /home-plug-land-1440\.(mp4|webm)$/.test(s.src) && s.w === 2560 && s.h === 1440 && !s.paused, `${s.src} ${s.w}x${s.h}`);
   await ctx.close();
 }
 // 2. phone (portrait), throttled CPU: portrait film, skip

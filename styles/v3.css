@@ -71,3 +71,4 @@ body.film-on .v3-intro-ui { z-index: 40; }
 body.film-on { overflow: hidden; }
 @media (max-width: 600px) { .v3-intro-ui { right: 12px; left: 12px; bottom: calc(14px + env(safe-area-inset-bottom)); justify-content: flex-end; } }
 @media (prefers-reduced-motion: reduce) { .v3-film { transition: none; } }
+body.film-seamless .v3-hero > *, body.film-seamless .nav { transition: none !important; }

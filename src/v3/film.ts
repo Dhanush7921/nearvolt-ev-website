@@ -18,7 +18,7 @@ const store = {
 };
 
 /** Larger desktop file only when the screen and connection can use it. */
-const HAS_1440 = false;
+const HAS_1440 = true;
 
 type Conn = { saveData?: boolean; effectiveType?: string; downlink?: number };
 export function filmSource() {
@@ -92,6 +92,8 @@ export function play() {
     video.removeEventListener('ended', onEnded);
     video.removeEventListener('error', onError);
     store.set('nv3-intro', '1');
+    // natural end: the film's last frame already shows the hero, so the live text appears at once under the dissolve
+    if (seamless) { document.body.classList.add('film-seamless'); setTimeout(() => document.body.classList.remove('film-seamless'), 1500); }
     document.body.classList.remove('intro-on', 'film-on');
     wrap.classList.add('out');
     end = null;
