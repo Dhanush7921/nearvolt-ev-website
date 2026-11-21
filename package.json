@@ -1,21 +1,30 @@
 {
-  "name": "nearvolt-ev-website",
+  "name": "green-plug-ev-website",
   "private": true,
-  "version": "2.0.0",
-  "description": "NEARVOLT EV V2 — cinematic concept website for a peer-to-peer EV charging discovery platform (pre-launch).",
+  "version": "1.0.0",
+  "description": "Informational marketing website for GREEN PLUG EV, a planned EV charging discovery app for electric cars and bikes in Andhra Pradesh, India.",
   "type": "module",
   "scripts": {
-    "typecheck": "tsc -p . --noEmit",
+    "dev": "node scripts/dev.mjs",
     "build": "node scripts/build.mjs",
-    "preview": "node scripts/serve.mjs 4173",
-    "logo": "python3 scripts/build_logo.py",
-    "audio": "python3 scripts/make_audio.py",
-    "render:intro": "node scripts/build.mjs --with-render && node scripts/render-intro.mjs --framing land --w 1920 --h 1080 && node scripts/render-intro.mjs --framing port --w 720 --h 1280",
-    "encode:intro": "sh scripts/encode-intro.sh",
-    "qa": "node scripts/qa.mjs http://localhost:4173/"
+    "preview": "node scripts/preview.mjs",
+    "typecheck": "tsc --noEmit",
+    "verify": "node scripts/verify.mjs"
+  },
+  "dependencies": {
+    "gsap": "^3.14.2",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "three": "^0.185.0"
   },
   "devDependencies": {
-    "typescript": ">=5.9"
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@types/three": "^0.185.0",
+    "esbuild": "^0.28.0",
+    "typescript": "^6.0.0"
   },
-  "engines": { "node": ">=20" }
+  "engines": {
+    "node": ">=20"
+  }
 }

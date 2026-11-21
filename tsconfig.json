@@ -1,15 +1,19 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "ES2022",
-    "moduleResolution": "bundler",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
     "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "resolveJsonModule": true,
     "noUnusedLocals": true,
-    "outDir": "dist/js",
-    "rootDir": "src",
-    "sourceMap": false,
-    "skipLibCheck": true
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "types": []
   },
   "include": ["src"]
 }
