@@ -1,0 +1,63 @@
+import express from 'express';
+import helmet from 'helmet';
+import cors from 'cors';
+import { rateLimit } from 'express-rate-limit';
+import { randomUUID } from 'node:crypto';
+import { authenticate, optionalAuth, requireRole, requireAdmin } from './middleware/auth.js';
+import { errorHandler, ok } from './middleware/errors.js';
+import { gate } from './middleware/maintenance.js';
+import { notFound } from './lib/errors.js';
+import { createSettings } from './services/settings.js';
+import { createNotifier } from './services/notify.js';
+import { meRoutes } from './routes/me.js';
+import { hostRoutes } from './routes/hosts.js';
+import { requestRoutes } from './routes/requests.js';
+import { otpRoutes } from './routes/otp.js';
+import { supportRoutes } from './routes/support.js';
+import { adminRoutes } from './routes/admin.js';
+import { publicRoutes } from './routes/public.js';
+import { internalRoutes } from './routes/internal.js';
+import { logger } from './lib/logger.js';
+
+export const API_VERSION = '1.0.0';
+
+export function createApp(deps) {
+  const { config } = deps;
+  const settings = deps.settings || createSettings(deps.db);
+  const notify = deps.notify || createNotifier(deps);
+  const d = { ...deps, settings, notify };
+  const app = express();
+  app.disable('x-powered-by');
+  app.set('trust proxy', 1); // Cloud Run front end
+  app.use((req, res, next) => { req.id = req.get('X-Cloud-Trace-Context')?.split('/')[0] || randomUUID(); res.set('X-Request-Id', req.id); next(); });
+  app.use(helmet({ contentSecurityPolicy: { directives: { defaultSrc: ["'none'"], frameAncestors: ["'none'"] } }, crossOriginResourcePolicy: { policy: 'same-site' } }));
+  app.use(cors({ origin: (origin, cb) => cb(null, !origin || config.corsOrigins.includes(origin)), methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+    allowedHeaders: ['Authorization', 'Content-Type', 'Idempotency-Key', 'X-Firebase-AppCheck', 'X-App-Version-Code', 'X-App-Platform'], maxAge: 600 }));
+  app.use(express.json({ limit: '64kb' }));
+  app.use((req, res, next) => {
+    const t = Date.now();
+    res.on('finish', () => logger.info({ rid: req.id, method: req.method, path: req.route?.path || req.path.replace(/[A-Za-z0-9]{20,}/g, ':id'), status: res.statusCode, ms: Date.now() - t }, 'request'));
+    next();
+  });
+
+  app.get('/healthz', (_req, res) => ok(res, { status: 'ok', version: API_VERSION, env: config.APP_ENV }));
+  app.get('/api/v1/health', (_req, res) => ok(res, { status: 'ok', version: API_VERSION, env: config.APP_ENV, time: new Date().toISOString() }));
+
+  const v1 = express.Router();
+  v1.use(rateLimit({ windowMs: 15 * 60e3, limit: config.NODE_ENV === 'test' ? 100000 : 600, standardHeaders: 'draft-8', legacyHeaders: false,
+    handler: (_req, res) => res.status(429).json({ ok: false, error: { code: 'RATE_LIMITED', message: 'Too many requests. Please slow down.' } }) }));
+  v1.use('/internal', internalRoutes(d));
+  v1.use('/public', publicRoutes(d));
+  v1.use(gate(settings));
+  const authn = authenticate(d);
+  v1.use('/auth/otp', otpRoutes({ ...d, authOptional: optionalAuth(d) }));
+  v1.use('/me', authn, meRoutes(d));
+  v1.use('/hosts', authn, hostRoutes(d));
+  v1.use('/requests', authn, requireRole('customer', 'host'), requestRoutes(d));
+  v1.use('/support', authn, supportRoutes(d));
+  v1.use('/admin', authn, requireAdmin(config), adminRoutes(d));
+  app.use('/api/v1', v1);
+  app.use((_req, _res, next) => next(notFound('Endpoint not found.')));
+  app.use(errorHandler);
+  return app;
+}

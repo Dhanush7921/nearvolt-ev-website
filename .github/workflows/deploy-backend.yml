@@ -1,0 +1,51 @@
+name: Deploy backend (Cloud Run)
+
+# Manual, per environment. Authentication uses Workload Identity Federation: no service-account keys are stored in GitHub.
+# Required GitHub environment variables (Settings → Environments → dev/prod → Variables):
+#   GCP_PROJECT_ID, GCP_REGION, GCP_WIF_PROVIDER, GCP_DEPLOY_SA, API_RUNTIME_SA, CORS_ORIGINS,
+#   STORAGE_BUCKET, SHEETS_SPREADSHEET_ID, SCHEDULER_SA_EMAIL, APP_ENV (dev|prod)
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        type: choice
+        options: [dev, prod]
+        required: true
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 21 }
+      - name: Test before deploy
+        working-directory: backend
+        run: npm ci --no-audit --no-fund && npm test
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Deploy
+        run: |
+          SERVICE="nearvolt-api-${{ inputs.environment }}"
+          URL_GUESS=$(gcloud run services describe "$SERVICE" --region "${{ vars.GCP_REGION }}" --format='value(status.url)' 2>/dev/null || true)
+          gcloud run deploy "$SERVICE" \
+            --project "${{ vars.GCP_PROJECT_ID }}" --region "${{ vars.GCP_REGION }}" --source backend \
+            --service-account "${{ vars.API_RUNTIME_SA }}" --allow-unauthenticated \
+            --min-instances 0 --max-instances 5 --concurrency 80 --cpu 1 --memory 512Mi --timeout 30s \
+            --set-env-vars "NODE_ENV=production,APP_ENV=${{ vars.APP_ENV }},CORS_ORIGINS=${{ vars.CORS_ORIGINS }},STORAGE_BUCKET=${{ vars.STORAGE_BUCKET }},SHEETS_SPREADSHEET_ID=${{ vars.SHEETS_SPREADSHEET_ID }},INTERNAL_OIDC_SA_EMAIL=${{ vars.SCHEDULER_SA_EMAIL }},INTERNAL_OIDC_AUDIENCE=${URL_GUESS:-pending},REQUIRE_APP_CHECK=true,REQUIRE_ADMIN_MFA=true" \
+            --set-secrets "MSG91_AUTH_KEY=msg91-auth-key:latest,MSG91_TEMPLATE_ID=msg91-template-id:latest,OTP_HASH_SALT=otp-hash-salt:latest"
+          URL=$(gcloud run services describe "$SERVICE" --region "${{ vars.GCP_REGION }}" --format='value(status.url)')
+          if [ "$URL" != "$URL_GUESS" ]; then gcloud run services update "$SERVICE" --region "${{ vars.GCP_REGION }}" --update-env-vars "INTERNAL_OIDC_AUDIENCE=$URL"; fi
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          curl -fsS "$URL/api/v1/health"

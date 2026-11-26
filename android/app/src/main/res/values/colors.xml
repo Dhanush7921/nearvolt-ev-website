@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="forest">#051F20</color>
+    <color name="pine">#0B2B26</color>
+    <color name="spruce">#163832</color>
+    <color name="moss">#235347</color>
+    <color name="sage">#8EB69B</color>
+    <color name="mint">#DAF1DE</color>
+    <color name="splash_bg">#FBFDFB</color>
+</resources>

@@ -1,0 +1,43 @@
+name: Deploy website + admin (Firebase Hosting)
+
+# Builds the existing website plus the admin dashboard and legal pages, then deploys to the Firebase Hosting default
+# HTTPS domain. GitHub Pages (deploy.yml) is left untouched until this replacement is verified.
+# Required environment variables: GCP_PROJECT_ID, GCP_WIF_PROVIDER, GCP_DEPLOY_SA, API_BASE_URL,
+#   FIREBASE_WEB_API_KEY, FIREBASE_WEB_APP_ID (public identifiers, not secrets).
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        options: [dev, prod]
+        required: true
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: if [ -f package-lock.json ]; then npm ci; else npm install --no-audit --no-fund; fi
+      - name: Build
+        env: { BASE_PATH: / }
+        run: npm run typecheck && npm run build
+      - name: Write public runtime config
+        run: |
+          P="${{ vars.GCP_PROJECT_ID }}"
+          cat > dist/admin/config.js <<EOF2
+          window.NV_ADMIN_CONFIG = { apiBase: '${{ vars.API_BASE_URL }}', firebase: { apiKey: '${{ vars.FIREBASE_WEB_API_KEY }}', authDomain: '$P.firebaseapp.com', projectId: '$P', appId: '${{ vars.FIREBASE_WEB_APP_ID }}' } };
+          EOF2
+          echo "window.NV_PUBLIC_CONFIG = { apiBase: '${{ vars.API_BASE_URL }}' };" > dist/nv-config.js
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
+      - name: Deploy hosting, rules and indexes
+        run: npx -y firebase-tools@15 deploy --project "${{ vars.GCP_PROJECT_ID }}" --config firebase/firebase.json --only hosting,firestore,storage --non-interactive

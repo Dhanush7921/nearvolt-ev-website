@@ -1,0 +1,14 @@
+.gradle/
+build/
+local.properties
+.idea/
+*.iml
+captures/
+.cxx/
+.kotlin/
+# Never commit signing material or Firebase config with project identifiers per environment.
+*.jks
+*.keystore
+keystore.properties
+app/google-services.json
+app/src/*/google-services.json

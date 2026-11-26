@@ -1,3 +1,24 @@
+# NEARVOLT EV
+
+Emergency EV charging assistance platform connecting EV drivers with nearby **verified** charging hosts — starting in Visakhapatnam. NEARVOLT EV does not manufacture, install or supply charging equipment.
+
+| Part | Path | Docs |
+|---|---|---|
+| Android app (Kotlin, Jetpack Compose, MVVM) — customer + host roles | `android/` | [ANDROID_STUDIO_SETUP.md](ANDROID_STUDIO_SETUP.md) |
+| Shared API (Node 22, Express, Cloud Run) | `backend/` | [API_DOCUMENTATION.md](API_DOCUMENTATION.md) |
+| Firestore/Storage rules, indexes, Hosting config | `firebase/` | [ARCHITECTURE.md](ARCHITECTURE.md) |
+| Admin dashboard, privacy, terms, account deletion pages | `web/static/` | [SECURITY_CHECKLIST.md](SECURITY_CHECKLIST.md) |
+| Marketing website (existing, unchanged) | `src/`, `public/` | below |
+| Cloud setup scripts | `infra/` | [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) |
+
+Status: **[PRODUCTION_STATUS.md](PRODUCTION_STATUS.md)** · Tests: [TEST_REPORT.md](TEST_REPORT.md) · Costs: [COST_ESTIMATE.md](COST_ESTIMATE.md) · Backups: [BACKUP_RECOVERY.md](BACKUP_RECOVERY.md) · [RELEASE_NOTES.md](RELEASE_NOTES.md)
+
+Quick checks: `cd backend && npm ci && npm test` · `cd android && ./gradlew testDevDebugUnitTest assembleDevDebug` · `npm run build && npm run verify`
+
+---
+
+## Website (original README)
+
 > **This repository mirrors the original NEARVOLT EV website** (source of truth: `Dhanush7921/green-plug-ev-website`) so the
 > same site is also served at https://dhanush7921.github.io/nearvolt-ev-website/. The workflow derives the base path from the
 > repository name, so the identical source deploys correctly at both addresses. The previous dark V3 site is preserved on the

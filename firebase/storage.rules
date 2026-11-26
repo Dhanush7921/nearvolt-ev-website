@@ -1,0 +1,10 @@
+rules_version = '2';
+// Host photos and safety documents are private. Uploads use short-lived signed URLs issued by the backend
+// and reads use short-lived signed URLs for admins only. No direct client access.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

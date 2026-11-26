@@ -12,3 +12,14 @@ design-references/videos/
 design-references/images/
 design-references/previous-build/
 design-references/frames/
+
+# Production stack
+backend/node_modules/
+*.jks
+*.keystore
+keystore.properties
+google-services.json
+service-account*.json
+.firebaserc
+firebase-debug.log
+web/static/admin/config.js
