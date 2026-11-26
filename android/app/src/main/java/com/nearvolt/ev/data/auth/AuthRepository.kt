@@ -54,9 +54,9 @@ class AuthRepository(private val prefs: Prefs) {
 
     suspend fun signInWithGoogle(activity: Activity): AuthOutcome {
         val a = auth ?: return AuthOutcome.Failed("Sign-in is not configured in this build.")
-        if (BuildConfig.GOOGLE_WEB_CLIENT_ID.isBlank()) return AuthOutcome.Failed("Google sign-in is not configured in this build.")
+        val clientId = webClientId(activity) ?: return AuthOutcome.Failed("Google sign-in is not configured in this build.")
         return try {
-            val option = GetSignInWithGoogleOption.Builder(BuildConfig.GOOGLE_WEB_CLIENT_ID).build()
+            val option = GetSignInWithGoogleOption.Builder(clientId).build()
             val res = CredentialManager.create(activity).getCredential(activity, GetCredentialRequest.Builder().addCredentialOption(option).build())
             val c = res.credential
             if (c !is CustomCredential || c.type != GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) return AuthOutcome.Failed("Unsupported credential.")
@@ -70,6 +70,14 @@ class AuthRepository(private val prefs: Prefs) {
         catch (e: GetCredentialException) { AuthOutcome.Failed("Google sign-in failed. Please try again.") }
         catch (e: FirebaseAuthUserCollisionException) { AuthOutcome.Failed("This Google account is already linked to another NEARVOLT account.") }
         catch (e: Exception) { AuthOutcome.Failed("Sign-in failed. Check your connection and try again.") }
+    }
+
+    /** OAuth web client ID: explicit build property, else the `default_web_client_id` generated from google-services.json. */
+    private fun webClientId(ctx: android.content.Context): String? {
+        BuildConfig.GOOGLE_WEB_CLIENT_ID.takeIf { it.isNotBlank() }?.let { return it }
+        @android.annotation.SuppressLint("DiscouragedApi")
+        val id = ctx.resources.getIdentifier("default_web_client_id", "string", ctx.packageName)
+        return if (id != 0) ctx.getString(id).takeIf { it.isNotBlank() } else null
     }
 
     /** Sends a passwordless sign-in link. The link opens the app via App Links on the Firebase Hosting domain. */

@@ -232,25 +232,5 @@
         }
       ]
     }
-  ],
-  "fieldOverrides": [
-    {
-      "collectionGroup": "rateLimits",
-      "fieldPath": "expireAt",
-      "ttl": true,
-      "indexes": []
-    },
-    {
-      "collectionGroup": "idempotency",
-      "fieldPath": "expireAt",
-      "ttl": true,
-      "indexes": []
-    },
-    {
-      "collectionGroup": "otpThrottle",
-      "fieldPath": "expireAt",
-      "ttl": true,
-      "indexes": []
-    }
   ]
 }

@@ -66,3 +66,14 @@ in this session. Therefore **nothing was deployed and no real-account test was r
 - Startup connection error cause found: the app was pointing at the old `nearvolt-ev-website` Render service (failed deploy, no API) or at
   `10.0.2.2` (emulator-only address) on a phone. Both fixed in build config.
 - Owner steps: RENDER_DEPLOYMENT.md. Free-tier limits there; **10K scalability not achievable or verified on Render Free**.
+
+## Zero-billing decision — 26 Nov 2026, 16:40 IST
+- **Cloudflare Workers evaluated, not adopted for V1 (owner chose Render):** the official Firebase Admin SDK needs gRPC, which Workers does not
+  support, so migration would mean rewriting the Firestore/Auth/FCM data layer onto REST; Workers Free also caps the API at 100k requests/day and
+  10 ms CPU per request. Cloudflare Queues are on the free plan (24 h retention). Revisit for a later release if needed.
+- **Backend stays on Render Free** (no card, no Google billing): https://nearvolt-api-0rxa.onrender.com, `FIREBASE_PROJECT_ID=nearvolt-ev` set.
+- "No connection" on the phone: the local checkout predates the commit that sets `NV_PROD_API_BASE_URL`, so the build targets `https://api.invalid/`.
+  Fix = pull `production/v1` and rebuild.
+- Spark gaps handled: Google web client ID read from google-services.json; expired technical records purged by the scheduled job (no free TTL).
+  Backend 42/42 tests.
+- Real Google/email/OTP login, Sheets sync and FCM on the live server: **not yet verified** (needs the service-account key on Render).

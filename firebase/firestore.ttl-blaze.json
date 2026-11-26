@@ -1,0 +1,23 @@
+{
+  "fieldOverrides": [
+    {
+      "collectionGroup": "rateLimits",
+      "fieldPath": "expireAt",
+      "ttl": true,
+      "indexes": []
+    },
+    {
+      "collectionGroup": "idempotency",
+      "fieldPath": "expireAt",
+      "ttl": true,
+      "indexes": []
+    },
+    {
+      "collectionGroup": "otpThrottle",
+      "fieldPath": "expireAt",
+      "ttl": true,
+      "indexes": []
+    }
+  ],
+  "_note": "Blaze only: merge into firestore.indexes.json to let Firestore TTL delete these docs automatically"
+}

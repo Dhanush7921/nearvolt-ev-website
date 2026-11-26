@@ -50,7 +50,13 @@ export function internalRoutes({ db, config, oidc, notify, sheetsClient, kicker 
       // Availability windows that have ended.
       const ended = await db.collection('hosts').where('available', '==', true).where('availableUntil', '<=', new Date()).limit(200).get();
       const b = db.batch(); ended.docs.forEach((d) => b.update(d.ref, { available: false })); if (!ended.empty) await b.commit();
-      ok(res, { expired: n, availabilityClosed: ended.size });
+      // Firestore TTL deletes need billing; on Spark purge expired technical records here (bounded per run).
+      let purged = 0;
+      for (const c of ['rateLimits', 'idempotency', 'otpThrottle']) {
+        const old = await db.collection(c).where('expireAt', '<=', new Date()).limit(300).get();
+        if (!old.empty) { const pb = db.batch(); old.docs.forEach((d) => pb.delete(d.ref)); await pb.commit(); purged += old.size; }
+      }
+      ok(res, { expired: n, availabilityClosed: ended.size, purged });
     } catch (e) { next(e); }
   });
   // Called by Cloud Tasks (kicks) and Cloud Scheduler (recovery sweep). Non-2xx makes Cloud Tasks retry with backoff.

@@ -17,8 +17,10 @@ Return to Cloud Run: deploy with `deploy-backend.yml`, set `STORAGE_DRIVER=gcs`,
 1. Firebase console (Spark is fine) → Project settings → **Service accounts → Generate new private key**. In Render → `nearvolt-api-0rxa` → Environment: set
    `FIREBASE_SERVICE_ACCOUNT_JSON` (paste the JSON) and `FIREBASE_PROJECT_ID`. Save → redeploys → `/api/v1/health` shows `ready:true`.
 2. Firebase: enable Google + Email-link sign-in; add the Android app(s) with SHA-1/SHA-256; put `google-services.json` in `android/app/src/{prod,dev}/`;
-   build with `-PNV_GOOGLE_WEB_CLIENT_ID=<web client id>`. Register App Check (Play Integrity) and the debug token, or real requests are rejected
-   (`REQUIRE_APP_CHECK=true`). Deploy `firebase/firestore.rules` and indexes (`firebase deploy --only firestore`, works on Spark).
+   the Google web client ID is read automatically from `google-services.json` (no extra property needed). Register App Check (Play Integrity)
+   and, for debug builds, the debug token printed in Logcat (`DebugAppCheckProvider`), or requests are rejected (`REQUIRE_APP_CHECK=true`).
+   Deploy rules and indexes: `firebase deploy --only firestore --project nearvolt-ev` (works on Spark; TTL settings for Blaze are kept
+   separately in `firebase/firestore.ttl-blaze.json`, and the scheduled job purges expired technical records instead).
 3. Google Sheet `NEARVOLT_EV_PRODUCTION`: share as **Editor** with the service account's `client_email`; set `SHEETS_SPREADSHEET_ID`; then call
    `/internal/sheets-setup` once with the token (Render → Environment → `INTERNAL_TASK_TOKEN`).
 4. MSG91 (after KYC + DLT approval): set `MSG91_AUTH_KEY`, `MSG91_TEMPLATE_ID`. Phone login appears automatically when configured.

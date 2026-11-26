@@ -78,3 +78,12 @@ test('lease allows only one concurrent holder', async () => {
   assert.equal(max, 1);
   assert.ok(out.filter((x) => x === 'ran').length >= 1); // never two holders at once (max === 1); losers skip
 });
+
+test('scheduled job purges expired technical records (Spark has no free TTL deletes)', async () => {
+  const { app } = makeApp(RENDER);
+  await db.collection('rateLimits').doc('old').set({ count: 1, expireAt: new Date(Date.now() - 1000) });
+  await db.collection('rateLimits').doc('live').set({ count: 1, expireAt: new Date(Date.now() + 60000) });
+  const r = await request(app).post('/api/v1/internal/expire-requests').set(bearer('t'.repeat(40))).expect(200);
+  assert.equal(r.body.data.purged, 1);
+  assert.equal((await db.collection('rateLimits').doc('live').get()).exists, true);
+});
