@@ -21,7 +21,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-enum class Phase { Loading, NotConfigured, UpdateRequired, Maintenance, Onboarding, SignIn, Consent, Setup, Main, Error }
+enum class Phase { Loading, NotConfigured, UpdateRequired, Maintenance, Onboarding, SignIn, VerifyEmail, Consent, Setup, Main, Error }
 
 data class AppState(
     val loading: Boolean = true,
@@ -72,8 +72,16 @@ class AppViewModel : ViewModel() {
         val onboarded = container.prefs.onboarded.first()
         val user = container.auth.currentUser
         if (user == null) { done(if (onboarded) Phase.SignIn else Phase.Onboarding); pendingLink?.let { completeLink(it, null) }; return@launch }
+        if (container.auth.needsEmailVerification) return@launch done(Phase.VerifyEmail)
         when (val m = container.repo.me()) {
-            is ApiResult.Err -> if (m.http == 401) { container.auth.signOut(); done(Phase.SignIn) } else _state.update { it.copy(loading = false, phase = Phase.Error, message = m.message) }
+            // Never sign the user out silently: only a genuinely invalid session does that, and the reason is shown.
+            is ApiResult.Err -> when (m.code) {
+                "SESSION_INVALID" -> { container.auth.signOut(); _state.update { it.copy(loading = false, phase = Phase.SignIn, message = m.message) } }
+                "EMAIL_NOT_VERIFIED" -> done(Phase.VerifyEmail)
+                "APP_CHECK_REQUIRED", "APP_CHECK_FAILED" -> _state.update { it.copy(loading = false, phase = Phase.Error, message = m.message +
+                    if (BuildConfig.DEBUG) "\n\nDebug build: register the App Check debug token from Logcat (tag DebugAppCheckProvider) in Firebase console → App Check → Manage debug tokens." else "\n\nPlease install NEARVOLT EV from Google Play.") }
+                else -> _state.update { it.copy(loading = false, phase = Phase.Error, message = m.message) }
+            }
             is ApiResult.Ok -> {
                 _state.update { it.copy(me = m.value) }
                 done(phaseFor(m.value))
@@ -117,8 +125,18 @@ class AppViewModel : ViewModel() {
 
     // ---- Auth actions ----
     fun google(activity: Activity, onDone: (String?) -> Unit) = viewModelScope.launch {
-        when (val o = container.auth.signInWithGoogle(activity)) { is AuthOutcome.Failed -> onDone(o.message); else -> onDone(null) }
+        // onDone is always called (success, failure, cancel, timeout) so the button spinner always resets.
+        val msg = try { when (val o = container.auth.signInWithGoogle(activity)) { is AuthOutcome.Failed -> o.message; else -> null } }
+            catch (e: Exception) { "Sign-in failed: ${e.message}" }
+        onDone(msg)
     }
+    fun emailAuth(register: Boolean, email: String, password: String, onDone: (String?) -> Unit) = viewModelScope.launch {
+        val o = if (register) container.auth.registerWithEmail(email, password) else container.auth.signInWithEmail(email, password)
+        onDone((o as? AuthOutcome.Failed)?.message)
+    }
+    fun resetPassword(email: String, onDone: (String?) -> Unit) = viewModelScope.launch { onDone((container.auth.sendPasswordReset(email) as? AuthOutcome.Failed)?.message) }
+    fun resendVerification(onDone: (String?) -> Unit) = viewModelScope.launch { onDone((container.auth.resendVerification() as? AuthOutcome.Failed)?.message) }
+    fun checkVerified(onDone: (Boolean) -> Unit) = viewModelScope.launch { val v = container.auth.reloadVerified(); onDone(v); if (v) refresh() }
     fun onEmailLink(link: String) { pendingLink = link; if (!_state.value.loading) completeLink(link, null) }
     fun completeLink(link: String, email: String?) = viewModelScope.launch {
         when (val o = container.auth.completeEmailLink(link, email)) {

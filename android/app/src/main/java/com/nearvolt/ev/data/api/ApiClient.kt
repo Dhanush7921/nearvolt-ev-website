@@ -43,8 +43,9 @@ object ApiClient {
             FirebaseAuth.getInstance().currentUser?.let { u ->
                 runCatching { Tasks.await(u.getIdToken(false), 10, TimeUnit.SECONDS).token }.getOrNull()?.let { b.header("Authorization", "Bearer $it") }
             }
-            runCatching { Tasks.await(FirebaseAppCheck.getInstance().getAppCheckToken(false), 10, TimeUnit.SECONDS).token }.getOrNull()
-                ?.let { b.header("X-Firebase-AppCheck", it) }
+            runCatching { Tasks.await(FirebaseAppCheck.getInstance().getAppCheckToken(false), 10, TimeUnit.SECONDS).token }
+                .onFailure { android.util.Log.w("NearVoltAppCheck", "App Check token unavailable: ${it.message}") }
+                .getOrNull()?.let { b.header("X-Firebase-AppCheck", it) }
         }
         chain.proceed(b.build())
     }
@@ -53,6 +54,8 @@ object ApiClient {
     private val refresh = object : Authenticator {
         override fun authenticate(route: Route?, response: Response): Request? {
             if (response.request.header("X-Retry-Auth") != null || !firebaseReady()) return null
+            // Only a rejected ID token benefits from a refresh; App Check / email-verification rejections do not.
+            if (!response.peekBody(2048).string().contains("SESSION_INVALID")) return null
             val user = FirebaseAuth.getInstance().currentUser ?: return null
             val token = runCatching { Tasks.await(user.getIdToken(true), 10, TimeUnit.SECONDS).token }.getOrNull() ?: return null
             return response.request.newBuilder().header("Authorization", "Bearer $token").header("X-Retry-Auth", "1").build()

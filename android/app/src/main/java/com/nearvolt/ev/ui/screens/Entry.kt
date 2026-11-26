@@ -92,6 +92,8 @@ fun SignInScreen(vm: AppViewModel) {
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var registering by remember { mutableStateOf(false) }
     var phone by remember { mutableStateOf("") }
     var otp by remember { mutableStateOf("") }
     var resendIn by remember { mutableIntStateOf(0) }
@@ -124,17 +126,25 @@ fun SignInScreen(vm: AppViewModel) {
                     "email" -> {
                         OutlinedTextField(email, { email = it.trim() }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.field_email)) }, singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email))
-                        PrimaryButton(stringResource(R.string.signin_send_link), {
-                            scope.launch { busy = true; error = null
-                                when (val o = vm.container.auth.sendEmailLink(email)) { is AuthOutcome.Failed -> error = o.message; else -> mode = "emailSent" }
-                                busy = false }
-                        }, enabled = Regex("^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$").matches(email), loading = busy)
+                        OutlinedTextField(password, { password = it.take(128) }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.field_password)) }, singleLine = true,
+                            visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                            supportingText = { if (registering) Text(stringResource(R.string.password_rule)) })
+                        val emailOk = Regex("^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$").matches(email)
+                        val pwOk = if (registering) password.length >= 8 && password.any(Char::isDigit) && password.any(Char::isLetter) else password.isNotEmpty()
+                        PrimaryButton(stringResource(if (registering) R.string.signin_create_account else R.string.signin_with_password), {
+                            busy = true; error = null
+                            vm.emailAuth(registering, email, password) { busy = false; error = it }
+                        }, enabled = emailOk && pwOk, loading = busy)
+                        TextButton(onClick = { registering = !registering; error = null }) { Text(stringResource(if (registering) R.string.signin_have_account else R.string.signin_new_account)) }
+                        if (!registering) TextButton(onClick = {
+                            if (!emailOk) { error = "Enter your email address first." } else { busy = true; error = null; vm.resetPassword(email) { busy = false; if (it == null) mode = "emailSent" else error = it } }
+                        }) { Text(stringResource(R.string.signin_forgot)) }
                         TextButton(onClick = { mode = "choose" }) { Text(stringResource(R.string.action_back)) }
                     }
                     "emailSent" -> {
                         NvCard { Icon(Icons.Outlined.MarkEmailRead, null, tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.height(8.dp))
-                            Text(stringResource(R.string.signin_link_sent, email), style = MaterialTheme.typography.bodyLarge) }
-                        TextButton(onClick = { mode = "email" }) { Text(stringResource(R.string.signin_use_other_email)) }
+                            Text(stringResource(R.string.signin_reset_sent, email), style = MaterialTheme.typography.bodyLarge) }
+                        TextButton(onClick = { mode = "email" }) { Text(stringResource(R.string.action_back)) }
                     }
                     "phone" -> {
                         OutlinedTextField(phone, { phone = it.filter { c -> c.isDigit() || c == '+' || c == ' ' }.take(16) }, Modifier.fillMaxWidth(),
@@ -162,6 +172,25 @@ fun SignInScreen(vm: AppViewModel) {
         Spacer(Modifier.height(24.dp))
         Text(stringResource(R.string.signin_legal), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Row { TextButton(onClick = { Links.open(ctx, Links.TERMS) }) { Text(stringResource(R.string.link_terms)) }; TextButton(onClick = { Links.open(ctx, Links.PRIVACY) }) { Text(stringResource(R.string.link_privacy)) } }
+    }
+}
+
+@Composable
+fun VerifyEmailScreen(vm: AppViewModel) {
+    var busy by remember { mutableStateOf(false) }
+    var msg by remember { mutableStateOf<String?>(null) }
+    var isError by remember { mutableStateOf(true) }
+    val email = vm.container.auth.currentUser?.email.orEmpty()
+    Column(Modifier.fillMaxSize().systemBarsPadding().padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Spacer(Modifier.height(24.dp))
+        Icon(Icons.Outlined.MarkEmailUnread, null, Modifier.size(48.dp), tint = MaterialTheme.colorScheme.primary)
+        Text(stringResource(R.string.verify_title), style = MaterialTheme.typography.headlineMedium)
+        Text(stringResource(R.string.verify_body, email), style = MaterialTheme.typography.bodyLarge)
+        InlineMessage(msg, isError)
+        PrimaryButton(stringResource(R.string.verify_done), { busy = true; msg = null
+            vm.checkVerified { ok -> busy = false; if (!ok) { isError = true; msg = "Not verified yet. Open the link in the email, then tap again." } } }, loading = busy)
+        SecondaryButton(stringResource(R.string.verify_resend), { vm.resendVerification { e -> isError = e != null; msg = e ?: "Verification email sent." } })
+        TextButton(onClick = { vm.signOut() }) { Text(stringResource(R.string.action_sign_out)) }
     }
 }
 

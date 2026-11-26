@@ -44,9 +44,13 @@ fun NearVoltRoot(vm: AppViewModel) {
                     Phase.NotConfigured -> Gate(stringResource(R.string.gate_config_title), stringResource(R.string.gate_config_body), null, null)
                     Phase.UpdateRequired -> UpdateGate()
                     Phase.Maintenance -> Gate(stringResource(R.string.gate_maintenance_title), s.config?.maintenance?.message?.ifBlank { null } ?: stringResource(R.string.gate_maintenance_body), stringResource(R.string.action_retry)) { vm.refresh() }
-                    Phase.Error -> Gate(stringResource(R.string.state_error_title), s.message ?: stringResource(R.string.state_error_body), stringResource(R.string.action_retry)) { vm.refresh() }
+                    Phase.Error -> Column(Modifier.fillMaxSize()) {
+                        Box(Modifier.weight(1f)) { Gate(stringResource(R.string.state_error_title), s.message ?: stringResource(R.string.state_error_body), stringResource(R.string.action_retry)) { vm.refresh() } }
+                        if (vm.container.auth.currentUser != null) TextButton(onClick = { vm.signOut() }, modifier = Modifier.align(Alignment.CenterHorizontally).navigationBarsPadding().padding(bottom = 16.dp)) { Text(stringResource(R.string.action_sign_out)) }
+                    }
                     Phase.Onboarding -> OnboardingScreen(onDone = vm::finishOnboarding)
                     Phase.SignIn -> SignInScreen(vm)
+                    Phase.VerifyEmail -> com.nearvolt.ev.ui.screens.VerifyEmailScreen(vm)
                     Phase.Consent -> ConsentScreen(vm)
                     Phase.Setup -> SetupScreen(vm)
                     Phase.Main -> MainScreen(vm)
