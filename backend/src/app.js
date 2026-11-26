@@ -52,7 +52,13 @@ export function createApp(deps) {
   });
 
   app.get('/healthz', (_req, res) => ok(res, { status: 'ok', version: API_VERSION, env: config.APP_ENV }));
-  app.get('/api/v1/health', (_req, res) => ok(res, { status: 'ok', version: API_VERSION, env: config.APP_ENV, time: new Date().toISOString() }));
+  app.get('/api/v1/health', (_req, res) => ok(res, { status: 'ok', version: API_VERSION, env: config.APP_ENV, time: new Date().toISOString(),
+    ready: config.firebaseReady, features: { phoneLogin: config.phoneOtpEnabled, sheetsSync: config.sheetsEnabled, storage: config.STORAGE_DRIVER } }));
+  // Fail fast (instead of a 15 s credential lookup) when the deployment has no Firebase credentials yet.
+  if (!config.firebaseReady) {
+    app.use('/api/v1', (_req, res) => res.status(503).set('Retry-After', '60').json({ ok: false, error: { code: 'SERVER_NOT_CONFIGURED',
+      message: 'NEARVOLT EV servers are being set up. Please try again later.' } }));
+  }
 
   const v1 = express.Router();
   v1.use(rateLimit({ windowMs: 15 * 60e3, limit: config.NODE_ENV === 'test' ? 100000 : config.IP_LIMIT_PER_15MIN, standardHeaders: 'draft-8', legacyHeaders: false,

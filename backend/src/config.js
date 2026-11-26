@@ -50,6 +50,8 @@ const schema = z.object({
 export function loadConfig(env = process.env) {
   // Render injects RENDER_EXTERNAL_URL (https://<service>.onrender.com); use it when PUBLIC_URL is not set.
   const cfg = schema.parse({ ...env, PUBLIC_URL: env.PUBLIC_URL || env.RENDER_EXTERNAL_URL || '' });
+  // On Render there is no Google metadata server: without a service-account key, Firebase cannot work.
+  cfg.firebaseReady = Boolean(cfg.FIREBASE_SERVICE_ACCOUNT_JSON.trim()) || !env.RENDER;
   cfg.corsOrigins = cfg.CORS_ORIGINS.split(',').map((s) => s.trim()).filter(Boolean);
   if (cfg.APP_ENV === 'prod' && (cfg.OTP_PROVIDER === 'mock' || cfg.FAULT_SHEETS || cfg.FAULT_FCM)) throw new Error('Test switches are not allowed in prod');
   cfg.phoneOtpEnabled = cfg.OTP_PROVIDER === 'mock' ? Boolean(cfg.OTP_HASH_SALT) : Boolean(cfg.MSG91_AUTH_KEY && cfg.MSG91_TEMPLATE_ID && cfg.OTP_HASH_SALT);
