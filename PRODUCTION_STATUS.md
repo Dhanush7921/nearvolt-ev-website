@@ -1,6 +1,6 @@
 # Production status — NEARVOLT EV v1.0.0
 
-**Release readiness: BLOCKED** — code is built and tested locally; external accounts, deployment and device/safety validation are pending. Updated 26 Nov 2026. Deadline 29 Nov 2026.
+**Release readiness: BLOCKED** — code is built and tested locally; external accounts, deployment and device/safety validation are pending. Updated 26 Nov 2026 (14:00 IST). Deadline 29 Nov 2026.
 
 ## Done (verified locally)
 - Scalability upgrade: Cloud Tasks Sheets sync, load shedding with emergency priority, hot-document fixes, sharded rate limits, discovery cache, compression, deadlines, k6 suite, monitoring/alert/budget scripts, Cloud Armor evaluation. Local load tests on 10,201 users: 500 simultaneous users p95 39 ms, 0 unexpected errors; zero double-booking; zero lost acknowledged requests after crash. See SCALABILITY_REPORT.md.
@@ -33,3 +33,25 @@
 - Telugu and Hindi translations (`values-te`, `values-hi`; all UI strings are already in resources).
 - Host opening hours: per-day different times (API supports it; app editor uses one time range for selected days).
 - Roborazzi screenshot tests; Cloud Armor if abuse appears.
+
+## Execution attempt — 26 Nov 2026, 14:00 IST
+Checked for usable credentials before deploying: this workspace has **no** Google Cloud, Firebase, GitHub-push, MSG91 or signing
+credentials; the linked Windows PC is reachable only through folders the owner connects, and access to `~/NEARVOLT-EV` was not granted
+in this session. Therefore **nothing was deployed and no real-account test was run**. Completed: standalone bundle
+`nearvolt-complete-v1.bundle` (`git bundle create --all`), restored into a fresh directory and verified (22 commits, both branches, fsck clean).
+
+## Owner action checklist (in order — everything else is ready in the repo)
+1. **Push code:** `git clone nearvolt-complete-v1.bundle NEARVOLT-EV` (or `git fetch <bundle> production/v1:production/v1`) → `git push origin production/v1 main`.
+2. **Firebase projects** `nearvolt-ev-staging` and `nearvolt-ev-prod` on the Blaze plan; enable Google + Email-link sign-in; upgrade to Identity Platform and enable TOTP MFA.
+3. **Run** `infra/setup-gcp.sh` for each (Cloud Shell, project Owner). Approve billing for `MIN_INSTANCES=1` (≈ ₹1,100/month) or set `MIN_INSTANCES=0`.
+4. **Android app registration:** add `com.nearvolt.ev` / `.dev`; download `google-services.json` into `android/app/src/{prod,dev}/`; note the Google **web client ID**.
+5. **Signing:** create the upload keystore yourself (ANDROID_STUDIO_SETUP.md), keep it offline; enrol in Play App Signing; register debug/upload/Play SHA-1 + SHA-256 in Firebase.
+6. **GitHub:** create environments `staging`/`prod` with the variables in DEPLOYMENT_GUIDE.md; run **Deploy backend** then **Deploy website + admin**; run `infra/schedule-jobs.sh`, `infra/monitoring/setup-monitoring.sh`, `setup-budget.sh`.
+7. **Google Sheet** `NEARVOLT_EV_PRODUCTION`: share (Editor) with the runtime service account; set `SHEETS_SPREADSHEET_ID`; call `/internal/sheets-setup`.
+8. **MSG91:** KYC + DLT entity and OTP template approval; add `msg91-auth-key` / `msg91-template-id` secrets. Test with your own number only.
+9. **First admin:** `node backend/scripts/grant-admin.mjs <email>`; enrol TOTP.
+10. **Build:** `NV_PROD_API_BASE_URL=<Cloud Run URL> NV_GOOGLE_WEB_CLIENT_ID=… NV_AUTH_LINK_HOST=nearvolt-ev-prod.firebaseapp.com ./gradlew bundleProdRelease assembleProdRelease`.
+11. **Device tests:** install on 2+ physical phones (one low-end); run Google, email-link and OTP sign-in, full customer↔host flow, Sheets row check, push, account deletion; TalkBack pass.
+12. **10k load tests on staging** (LOAD_TEST_RESULTS.md → "How to reproduce") from a separate VM, within your approved spend; update the reports with measured numbers.
+13. **Operations/legal:** electrician inspections for first hosts; legal review of privacy/terms + operator & grievance details; Play Console listing, Data Safety, content rating, closed testing.
+14. Then merge to `main` and tag `v1.0.0`.
