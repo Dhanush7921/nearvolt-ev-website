@@ -55,3 +55,14 @@ in this session. Therefore **nothing was deployed and no real-account test was r
 12. **10k load tests on staging** (LOAD_TEST_RESULTS.md → "How to reproduce") from a separate VM, within your approved spend; update the reports with measured numbers.
 13. **Operations/legal:** electrician inspections for first hosts; legal review of privacy/terms + operator & grievance details; Play Console listing, Data Safety, content rating, closed testing.
 14. Then merge to `main` and tag `v1.0.0`.
+
+## Hosting change — Render (26 Nov 2026, 16:05 IST)
+- **API deployed on Render Free:** https://nearvolt-api-0rxa.onrender.com — health 200, `ready:false` until the Firebase service-account key is
+  added (data endpoints return `503 SERVER_NOT_CONFIGURED` in ~1 s). Branch `production/v1` pushed to GitHub; Render auto-deploys it.
+- Code adapted for Firebase Spark (no Cloud Storage / Tasks / Scheduler): Firestore file storage via signed links, inline Sheets sync with lease,
+  token-authenticated internal jobs + GitHub Actions cron. 41/41 backend tests. Cloud Run path retained.
+- Android: `NV_PROD_API_BASE_URL` (and dev default) = the Render URL; cold-start tolerant; APK rebuilt. Real login **not verified**: no
+  `google-services.json`, so the app stops at "App not configured" and the server has no Firebase credentials yet.
+- Startup connection error cause found: the app was pointing at the old `nearvolt-ev-website` Render service (failed deploy, no API) or at
+  `10.0.2.2` (emulator-only address) on a phone. Both fixed in build config.
+- Owner steps: RENDER_DEPLOYMENT.md. Free-tier limits there; **10K scalability not achievable or verified on Render Free**.
