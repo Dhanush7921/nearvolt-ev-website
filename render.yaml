@@ -26,7 +26,7 @@ services:
       - { key: OTP_HASH_SALT, generateValue: true }
       - { key: FIREBASE_PROJECT_ID, sync: false }
       - { key: FIREBASE_SERVICE_ACCOUNT_JSON, sync: false }   # paste in the Render dashboard; never commit
-      - { key: CORS_ORIGINS, sync: false }                    # e.g. https://<project>.web.app,https://<project>.firebaseapp.com
+      - { key: CORS_ORIGINS, value: "https://dhanush7921.github.io" }  # add https://<project>.web.app when the admin site is deployed
       - { key: SHEETS_SPREADSHEET_ID, sync: false }
       - { key: MSG91_AUTH_KEY, sync: false }
       - { key: MSG91_TEMPLATE_ID, sync: false }
