@@ -10,7 +10,7 @@ import java.util.UUID
 
 /** All app data access goes through the backend API. Reads retry on flaky networks; writes do not (except idempotent creates). */
 class NearVoltRepository(private val api: ApiService = ApiClient.service) {
-    suspend fun config() = call(retries = 2) { api.config() }
+    suspend fun config() = call(retries = 4) { api.config() } // tolerate server wake-up at app start
     suspend fun me() = call(retries = 2) { api.me() }
     suspend fun saveConsents(c: Consents) = call { api.consents(c) }
     suspend fun saveProfile(p: ProfileBody) = call { api.profile(p) }

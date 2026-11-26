@@ -64,7 +64,8 @@ android {
             dimension = "env"
             applicationIdSuffix = ".dev"
             versionNameSuffix = "-dev"
-            buildConfigField("String", "API_BASE_URL", "\"${prop("NV_DEV_API_BASE_URL", "http://10.0.2.2:8080/")}\"")
+            // Defaults to the hosted API so the dev build works on a real phone; set NV_DEV_API_BASE_URL=http://10.0.2.2:8080/ for a local backend on the emulator.
+            buildConfigField("String", "API_BASE_URL", "\"${prop("NV_DEV_API_BASE_URL", prop("NV_PROD_API_BASE_URL", "https://api.invalid/"))}\"")
             resValue("string", "app_name", "NEARVOLT Dev")
         }
         create("prod") {

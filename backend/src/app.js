@@ -20,6 +20,8 @@ import { supportRoutes } from './routes/support.js';
 import { adminRoutes } from './routes/admin.js';
 import { publicRoutes } from './routes/public.js';
 import { internalRoutes } from './routes/internal.js';
+import { fileRoutes } from './routes/files.js';
+import { createFileStore } from './services/fileStore.js';
 import { logger } from './lib/logger.js';
 
 export const API_VERSION = '1.0.0';
@@ -29,7 +31,8 @@ export function createApp(deps) {
   const settings = deps.settings || createSettings(deps.db);
   const notify = deps.notify || createNotifier(deps);
   const kicker = deps.kicker || { enabled: false, kick: async () => false };
-  const d = { ...deps, settings, notify, kicker };
+  const fileStore = deps.fileStore !== undefined ? deps.fileStore : createFileStore({ config, db: deps.db, storage: deps.storage });
+  const d = { ...deps, settings, notify, kicker, fileStore };
   const app = express();
   app.disable('x-powered-by');
   app.set('trust proxy', 1); // Cloud Run front end
@@ -56,6 +59,7 @@ export function createApp(deps) {
     handler: (_req, res) => res.status(429).json({ ok: false, error: { code: 'RATE_LIMITED', message: 'Too many requests. Please slow down.' } }) }));
   v1.use('/internal', internalRoutes(d));
   v1.use('/public', publicRoutes(d));
+  v1.use('/files', fileRoutes(d));
   v1.use(gate(settings));
   const authn = authenticate(d);
   v1.use('/auth/otp', otpRoutes({ ...d, authOptional: optionalAuth(d) }));

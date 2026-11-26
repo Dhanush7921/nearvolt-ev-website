@@ -3,6 +3,8 @@ import { ok } from '../middleware/errors.js';
 import { unauth } from '../lib/errors.js';
 import { S } from '../services/stateMachine.js';
 import { applyTransition } from './requests.js';
+import { timingSafeEqual } from 'node:crypto';
+import { runSheetsSync } from '../services/inlineSync.js';
 import { syncOutbox, reconcile, backlog } from '../services/sheets.js';
 import { logger } from '../lib/logger.js';
 
@@ -12,7 +14,14 @@ export function internalRoutes({ db, config, oidc, notify, sheetsClient, kicker 
   r.use(async (req, _res, next) => {
     try {
       const m = (req.get('Authorization') || '').match(/^Bearer (.+)$/);
-      if (!m || !oidc) throw unauth();
+      if (!m) throw unauth();
+      // Render/external cron: shared secret (constant-time compare). Cloud Run: Google-signed OIDC from Cloud Scheduler/Tasks.
+      const tok = config.INTERNAL_TASK_TOKEN;
+      if (tok.length >= 32) {
+        const a = Buffer.from(m[1]), b = Buffer.from(tok);
+        if (a.length === b.length && timingSafeEqual(a, b)) return next();
+      }
+      if (!oidc || !config.INTERNAL_OIDC_AUDIENCE) throw unauth();
       const ticket = await oidc.verifyIdToken({ idToken: m[1], audience: config.INTERNAL_OIDC_AUDIENCE }).catch(() => null);
       const p = ticket?.getPayload();
       if (!p || p.email !== config.INTERNAL_OIDC_SA_EMAIL || !p.email_verified) throw unauth();
@@ -48,6 +57,11 @@ export function internalRoutes({ db, config, oidc, notify, sheetsClient, kicker 
   r.post('/sheets-sync', async (_req, res, next) => {
     try {
       if (!sheetsClient) return ok(res, { configured: false });
+      if (config.SYNC_DRIVER === 'inline') {
+        const r = await runSheetsSync({ db, client: sheetsClient });
+        if (r.error) return res.status(503).json({ ok: false, error: { code: 'SHEETS_UNAVAILABLE', message: 'Sheets write failed; will retry.' } });
+        return ok(res, r);
+      }
       const out = await syncOutbox({ db, client: sheetsClient });
       const b = await backlog(db);
       logger.info({ metric: 'sheets_backlog', pending: b.pending, oldestPendingSeconds: b.oldestPendingSeconds, processed: out.processed, failed: out.failed || 0 }, 'sheets sync');

@@ -1,0 +1,28 @@
+name: Scheduled jobs (Render)
+
+# Replaces Cloud Scheduler while Google Cloud billing is postponed: expires unanswered requests and drains the
+# Google Sheets outbox. Calling every 5 minutes also keeps a free Render instance from sleeping (15 min idle limit).
+# GitHub may delay scheduled runs under load; the API also expires requests lazily on read and syncs on writes.
+# Repository secrets: NV_API_URL (https://<service>.onrender.com), NV_INTERNAL_TASK_TOKEN (copy from Render env).
+on:
+  schedule: [{ cron: '*/5 * * * *' }]
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Expire requests and sync Google Sheets
+        env:
+          API: ${{ secrets.NV_API_URL }}
+          TOKEN: ${{ secrets.NV_INTERNAL_TASK_TOKEN }}
+        run: |
+          [ -n "$API" ] && [ -n "$TOKEN" ] || { echo "Secrets not configured"; exit 0; }
+          for job in expire-requests sheets-sync; do
+            code=$(curl -s -o /tmp/out -w '%{http_code}' --max-time 90 --retry 2 --retry-delay 10 -X POST -H "Authorization: Bearer $TOKEN" "$API/api/v1/internal/$job")
+            echo "$job -> $code"; head -c 300 /tmp/out; echo
+            [ "$code" = 200 ] || [ "$job" = sheets-sync ] || exit 1
+          done

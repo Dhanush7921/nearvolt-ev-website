@@ -1,0 +1,32 @@
+# Render Blueprint — NEARVOLT EV API on Render (Google Cloud billing postponed). Cloud Run config remains in
+# .github/workflows/deploy-backend.yml; switching back is configuration only (STORAGE_DRIVER/SYNC_DRIVER/OIDC).
+services:
+  - type: web
+    name: nearvolt-api
+    runtime: node
+    region: singapore            # closest Render region to Visakhapatnam
+    plan: free                   # free tier: sleeps when idle, single instance, no autoscaling (see RENDER_DEPLOYMENT.md)
+    rootDir: backend
+    branch: production/v1
+    buildCommand: npm ci --omit=dev --no-audit --no-fund
+    startCommand: node src/server.js
+    healthCheckPath: /api/v1/health
+    autoDeploy: true
+    envVars:
+      - { key: NODE_VERSION, value: "22" }
+      - { key: NODE_ENV, value: production }
+      - { key: APP_ENV, value: prod }
+      - { key: STORAGE_DRIVER, value: firestore }   # Spark plan has no Cloud Storage
+      - { key: SYNC_DRIVER, value: inline }         # no Cloud Tasks; in-process worker + Firestore lease + external cron
+      - { key: REQUIRE_APP_CHECK, value: "true" }
+      - { key: REQUIRE_ADMIN_MFA, value: "true" }
+      - { key: MAX_INFLIGHT, value: "60" }
+      - { key: INTERNAL_TASK_TOKEN, generateValue: true }
+      - { key: FILE_URL_SECRET, generateValue: true }
+      - { key: OTP_HASH_SALT, generateValue: true }
+      - { key: FIREBASE_PROJECT_ID, sync: false }
+      - { key: FIREBASE_SERVICE_ACCOUNT_JSON, sync: false }   # paste in the Render dashboard; never commit
+      - { key: CORS_ORIGINS, sync: false }                    # e.g. https://<project>.web.app,https://<project>.firebaseapp.com
+      - { key: SHEETS_SPREADSHEET_ID, sync: false }
+      - { key: MSG91_AUTH_KEY, sync: false }
+      - { key: MSG91_TEMPLATE_ID, sync: false }

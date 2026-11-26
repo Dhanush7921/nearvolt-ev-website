@@ -10,6 +10,7 @@ import { geohashForLocation, geohashQueryBounds, distanceKm, roundKm, inServiceA
 import { isOpenNow } from '../lib/hours.js';
 import { enqueue } from '../services/outbox.js';
 import { ts } from '../lib/paginate.js';
+import { sniffOk } from '../services/fileStore.js';
 import { memoryLimiter, ttlCache } from '../lib/overload.js';
 import { tooMany } from '../lib/errors.js';
 
@@ -36,7 +37,7 @@ export function isHostBookable(h, now = new Date()) {
   return (h.activeSessions || 0) < (h.equipment?.capacity || 1);
 }
 
-export function hostRoutes({ db, storage, config, settings }) {
+export function hostRoutes({ db, config, settings, fileStore }) {
   const r = Router();
   const hosts = db.collection('hosts');
   // Discovery is the hottest read path. A 5 s per-instance cache of the geohash query result absorbs bursts from
@@ -162,17 +163,15 @@ export function hostRoutes({ db, storage, config, settings }) {
   });
 
   // Signed, short-lived upload URL. Size and type are enforced by the signature; the file is checked again on confirm.
+  // Short-lived upload link (Cloud Storage signed URL, or HMAC link to the API for the Firestore driver).
   host.post('/uploads', validate(uploadSchema), async (req, res, next) => {
     try {
-      if (!storage || !config.STORAGE_BUCKET) throw unavailable('File uploads are not configured.');
+      if (!fileStore) throw unavailable('File uploads are not configured.');
+      if (req.body.sizeBytes > fileStore.maxBytes) throw bad(`Files must be ${Math.round(fileStore.maxBytes / 1048576)} MB or smaller.`);
       const ext = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'application/pdf': 'pdf' }[req.body.contentType];
       if (req.body.kind === 'photo' && ext === 'pdf') throw bad('Photos must be JPEG, PNG or WebP.');
       const path = `hosts/${req.user.uid}/${req.body.kind}s/${randomUUID()}.${ext}`;
-      const [url] = await storage.bucket(config.STORAGE_BUCKET).file(path).getSignedUrl({
-        version: 'v4', action: 'write', expires: Date.now() + 10 * 60e3, contentType: req.body.contentType,
-        extensionHeaders: { 'x-goog-content-length-range': `0,${req.body.sizeBytes}` },
-      });
-      ok(res, { uploadUrl: url, path, method: 'PUT', headers: { 'Content-Type': req.body.contentType, 'x-goog-content-length-range': `0,${req.body.sizeBytes}` } });
+      ok(res, await fileStore.uploadTicket(path, req.body.contentType, req.body.sizeBytes, req.user.uid));
     } catch (e) { next(e); }
   });
 
@@ -181,19 +180,10 @@ export function hostRoutes({ db, storage, config, settings }) {
       const path = String(req.body?.path || '');
       const m = path.match(new RegExp(`^hosts/${req.user.uid}/(photo|document)s/[0-9a-f-]{36}\\.(jpg|png|webp|pdf)$`));
       if (!m) throw bad('Invalid file reference.');
-      if (!storage || !config.STORAGE_BUCKET) throw unavailable('File uploads are not configured.');
-      const file = storage.bucket(config.STORAGE_BUCKET).file(path);
-      const [exists] = await file.exists();
-      if (!exists) throw notFound('Upload not found. Please try again.');
-      const [meta] = await file.getMetadata();
-      // Magic-byte check: content must match the declared type.
-      const [head] = await file.download({ start: 0, end: 11 });
-      const sig = head.toString('hex');
-      const okType = (meta.contentType === 'application/pdf' && sig.startsWith('25504446'))
-        || (meta.contentType === 'image/jpeg' && sig.startsWith('ffd8ff'))
-        || (meta.contentType === 'image/png' && sig.startsWith('89504e47'))
-        || (meta.contentType === 'image/webp' && sig.startsWith('52494646') && head.subarray(8, 12).toString() === 'WEBP');
-      if (!okType || Number(meta.size) > 10 * 1024 * 1024) { await file.delete().catch(() => {}); throw bad('File type or size is not allowed.'); }
+      if (!fileStore) throw unavailable('File uploads are not configured.');
+      const info = await fileStore.inspect(path);
+      if (!info) throw notFound('Upload not found. Please try again.');
+      if (!sniffOk(info.contentType, info.head) || info.size > fileStore.maxBytes) { await fileStore.remove(path); throw bad('File type or size is not allowed.'); }
       const field = m[1] === 'photo' ? 'photos' : 'documents';
       const ref = hosts.doc(req.user.uid);
       await db.runTransaction(async (tx) => {

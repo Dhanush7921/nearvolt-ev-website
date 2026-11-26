@@ -35,7 +35,7 @@ const hostAdminView = (d) => { const h = d.data(); return { uid: d.id, displayNa
   verification: h.verification ? { ...h.verification, reviewedAt: ts(h.verification.reviewedAt) } : null, available: h.available, activeSessions: h.activeSessions || 0,
   rating: h.rating, submittedAt: ts(h.submittedAt), updatedAt: ts(h.updatedAt) }; };
 
-export function adminRoutes({ db, auth, storage, config, settings, notify, sheetsClient }) {
+export function adminRoutes({ db, auth, fileStore, settings, notify, sheetsClient }) {
   const r = Router();
   const audit = (req, action, target, meta) => writeAudit(db, null, auditEntry(req.user, action, target, meta));
 
@@ -91,8 +91,8 @@ export function adminRoutes({ db, auth, storage, config, settings, notify, sheet
       const d = await db.collection('hosts').doc(req.params.uid).get();
       if (!d.exists) throw notFound();
       const v = hostAdminView(d);
-      if (storage && config.STORAGE_BUCKET) {
-        const sign = (p) => storage.bucket(config.STORAGE_BUCKET).file(p).getSignedUrl({ version: 'v4', action: 'read', expires: Date.now() + 10 * 60e3 }).then(([u]) => ({ path: p, url: u }));
+      if (fileStore) {
+        const sign = async (p) => ({ path: p, url: await fileStore.readUrl(p) });
         v.photoUrls = await Promise.all(v.photos.map(sign)); v.documentUrls = await Promise.all(v.documents.map(sign));
       }
       await audit(req, 'host.view_private', `hosts/${req.params.uid}`);

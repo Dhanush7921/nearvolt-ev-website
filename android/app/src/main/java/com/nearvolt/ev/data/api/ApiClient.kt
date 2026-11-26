@@ -61,7 +61,8 @@ object ApiClient {
 
     val http: OkHttpClient by lazy {
         OkHttpClient.Builder()
-            .connectTimeout(10, TimeUnit.SECONDS).readTimeout(20, TimeUnit.SECONDS).writeTimeout(20, TimeUnit.SECONDS)
+            // Read timeout covers a free-tier host waking from sleep (Render free instances spin down when idle).
+            .connectTimeout(15, TimeUnit.SECONDS).readTimeout(60, TimeUnit.SECONDS).writeTimeout(30, TimeUnit.SECONDS)
             .addInterceptor(headers).authenticator(refresh).build()
     }
     /** Plain client for signed upload URLs (no auth headers ever sent to storage). */

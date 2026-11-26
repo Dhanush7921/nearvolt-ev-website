@@ -57,7 +57,11 @@ class AppViewModel : ViewModel() {
         if (!container.auth.configured) { _state.update { it.copy(loading = false, phase = Phase.NotConfigured) }; return@launch }
         val cfg = when (val c = container.repo.config()) {
             is ApiResult.Ok -> c.value
-            is ApiResult.Err -> { _state.update { it.copy(loading = false, phase = Phase.Error, message = c.message) }; return@launch }
+            is ApiResult.Err -> {
+                val msg = if (BuildConfig.API_BASE_URL.contains("invalid")) "This build has no server address configured (NV_PROD_API_BASE_URL)."
+                    else if (c.isOffline) "Can't reach NEARVOLT servers. Check your internet connection and try again." else c.message
+                _state.update { it.copy(loading = false, phase = Phase.Error, message = msg) }; return@launch
+            }
         }
         val vc = BuildConfig.VERSION_CODE
         _state.update { it.copy(config = cfg, updateAvailable = vc < cfg.latestVersionCode) }

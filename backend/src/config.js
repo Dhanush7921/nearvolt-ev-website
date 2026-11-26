@@ -36,19 +36,30 @@ const schema = z.object({
   NEARBY_CACHE_MS: z.coerce.number().int().min(0).max(10000).default(5000),
   // Test-only switches (refused in prod): simulate provider outages and avoid paid SMS during load tests.
   OTP_PROVIDER: z.enum(['msg91', 'mock']).default('msg91'),
+  // Hosting portability (Cloud Run <-> Render). Defaults keep Cloud Run behaviour.
+  FIREBASE_SERVICE_ACCOUNT_JSON: z.string().default(''), // raw JSON or base64; Render only (Cloud Run uses its runtime SA)
+  FIREBASE_PROJECT_ID: z.string().default(''),
+  STORAGE_DRIVER: z.enum(['gcs', 'firestore']).default('gcs'), // firestore = private chunked storage (Spark plan has no Cloud Storage)
+  SYNC_DRIVER: z.enum(['cloudtasks', 'inline']).default('cloudtasks'), // inline = in-process worker with a Firestore lease
+  INTERNAL_TASK_TOKEN: z.string().default(''), // bearer secret for /internal/* when OIDC (Cloud Scheduler) is unavailable
+  FILE_URL_SECRET: z.string().default(''), // HMAC key for short-lived upload/download links (firestore driver)
   FAULT_SHEETS: bool('false'),
   FAULT_FCM: bool('false'),
 });
 
 export function loadConfig(env = process.env) {
-  const cfg = schema.parse(env);
+  // Render injects RENDER_EXTERNAL_URL (https://<service>.onrender.com); use it when PUBLIC_URL is not set.
+  const cfg = schema.parse({ ...env, PUBLIC_URL: env.PUBLIC_URL || env.RENDER_EXTERNAL_URL || '' });
   cfg.corsOrigins = cfg.CORS_ORIGINS.split(',').map((s) => s.trim()).filter(Boolean);
   if (cfg.APP_ENV === 'prod' && (cfg.OTP_PROVIDER === 'mock' || cfg.FAULT_SHEETS || cfg.FAULT_FCM)) throw new Error('Test switches are not allowed in prod');
   cfg.phoneOtpEnabled = cfg.OTP_PROVIDER === 'mock' ? Boolean(cfg.OTP_HASH_SALT) : Boolean(cfg.MSG91_AUTH_KEY && cfg.MSG91_TEMPLATE_ID && cfg.OTP_HASH_SALT);
   cfg.sheetsEnabled = Boolean(cfg.SHEETS_SPREADSHEET_ID);
   if (cfg.NODE_ENV === 'production') {
     if (!cfg.corsOrigins.length) throw new Error('CORS_ORIGINS is required in production');
-    if (!cfg.INTERNAL_OIDC_AUDIENCE || !cfg.INTERNAL_OIDC_SA_EMAIL) throw new Error('Internal OIDC config required in production');
+    const oidc = cfg.INTERNAL_OIDC_AUDIENCE && cfg.INTERNAL_OIDC_SA_EMAIL;
+    if (!oidc && cfg.INTERNAL_TASK_TOKEN.length < 32) throw new Error('Internal job auth required in production (OIDC config or INTERNAL_TASK_TOKEN >= 32 chars)');
+    if (cfg.STORAGE_DRIVER === 'firestore' && cfg.FILE_URL_SECRET.length < 32) throw new Error('FILE_URL_SECRET (>= 32 chars) required for the firestore storage driver');
+    if (cfg.STORAGE_DRIVER === 'firestore' && !cfg.PUBLIC_URL.startsWith('https://')) throw new Error('PUBLIC_URL (https) required for the firestore storage driver');
   }
   return cfg;
 }

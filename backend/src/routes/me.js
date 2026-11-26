@@ -17,7 +17,7 @@ export function userSheetRow(uid, u, status = 'ACTIVE') {
 const publicUser = (uid, u) => ({ uid, name: u.name || '', role: u.role || null, phone: u.phone || null, email: u.email || null,
   vehicle: u.vehicle || null, consents: u.consents || null, activeRequestId: u.activeRequestId || null, createdAt: ts(u.createdAt) });
 
-export function meRoutes({ db, auth, storage, config }) {
+export function meRoutes({ db, auth, fileStore }) {
   const r = Router();
   const users = db.collection('users');
 
@@ -126,7 +126,7 @@ export function meRoutes({ db, auth, storage, config }) {
       writeAudit(db, b, auditEntry(req.user, 'account.delete', `users/${uid}`));
       await b.commit();
       await db.recursiveDelete(users.doc(uid));
-      if (storage && config.STORAGE_BUCKET) await storage.bucket(config.STORAGE_BUCKET).deleteFiles({ prefix: `hosts/${uid}/` }).catch(() => {});
+      if (fileStore) await fileStore.removeOwner(uid).catch(() => {});
       await auth.deleteUser(uid);
       ok(res, { deleted: true });
     } catch (e) { next(e); }
