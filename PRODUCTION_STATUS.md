@@ -77,3 +77,15 @@ in this session. Therefore **nothing was deployed and no real-account test was r
 - Spark gaps handled: Google web client ID read from google-services.json; expired technical records purged by the scheduled job (no free TTL).
   Backend 42/42 tests.
 - Real Google/email/OTP login, Sheets sync and FCM on the live server: **not yet verified** (needs the service-account key on Render).
+
+## Auth incident — 26 Nov 2026 (Google sign-in spinner)
+- **Root cause (log evidence):** Render logs at 17:09:58–17:10:20Z show every authenticated call rejected with `auth_fail code=APP_CHECK_REQUIRED`. The app is not sending an App Check token, because the debug-build App Check token is not registered in Firebase. Firebase sign-in on the device succeeded.
+- **Client defects that turned this into an endless spinner (fixed in 9c99950):**
+  - Login waited for the session call and FCM registration to finish before completing.
+  - A `/me` 401 caused a silent sign-out loop.
+  - There were no overall timeouts.
+- **Fixes:**
+  - Backend (2d1f328): distinct rejection codes. App Check and authorization are still enforced.
+  - Android (9c99950): login is non-blocking with bounded timeouts, and each server code shows an explicit error state. Email links are replaced by verified email/password sign-in.
+- **Tests:** backend 43/43 passing; Android unit tests 7/7 (dev) and 7/7 (prod); lint 0 errors; prodDebug APK built.
+- **Pending (owner):** register the App Check debug token, enable the Email/Password provider, and verify on a device.
