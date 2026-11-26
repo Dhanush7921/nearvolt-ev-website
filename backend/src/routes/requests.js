@@ -10,6 +10,9 @@ import { enqueue } from '../services/outbox.js';
 import { distanceKm, roundKm, mapsDirectionsUrl, inServiceArea } from '../lib/geo.js';
 import { paginate, ts } from '../lib/paginate.js';
 import { hitLimit } from '../lib/limiter.js';
+import { keyedMutex } from '../lib/keyedMutex.js';
+
+const hostLock = keyedMutex();
 
 const MESSAGES = {
   ACCEPTED: ['Host accepted your request', 'Open NEARVOLT EV for directions.'],
@@ -28,6 +31,13 @@ const reqRow = (id, q) => ({ requestId: id, customerUid: q.customerUid, hostUid:
 // Applies a transition inside a transaction: capacity bookkeeping, active-request pointer, history, Sheets outbox.
 export async function applyTransition(db, requestId, action, actor, reason) {
   const reqRef = db.collection('requests').doc(requestId);
+  const pre = await reqRef.get();
+  if (!pre.exists) throw notFound('Request not found.');
+  // Serialise per host on this instance (hot-document protection); the transaction below remains the source of truth.
+  return hostLock(pre.data().hostUid, () => runTx(db, reqRef, requestId, action, actor, reason));
+}
+
+async function runTx(db, reqRef, requestId, action, actor, reason) {
   return db.runTransaction(async (tx) => {
     const rs = await tx.get(reqRef);
     if (!rs.exists) throw notFound('Request not found.');
@@ -101,8 +111,11 @@ export function requestRoutes({ db, config, settings, notify }) {
       const userRef = db.collection('users').doc(req.user.uid);
       const hostRef = db.collection('hosts').doc(hostId);
       const reqRef = col.doc();
+      // The host document is read OUTSIDE the transaction: creation must not lock the (potentially hot) host doc.
+      // This check is advisory; capacity and host status are enforced atomically when the host accepts.
+      const hs = await hostRef.get();
       const result = await db.runTransaction(async (tx) => {
-        const [idem, us, hs] = await Promise.all([tx.get(idemRef), tx.get(userRef), tx.get(hostRef)]);
+        const [idem, us] = await Promise.all([tx.get(idemRef), tx.get(userRef)]);
         if (idem.exists) return { replay: true, id: idem.data().requestId };
         const u = us.data() || {};
         if (!u.consents || !u.name) throw bad('Complete your profile first.');

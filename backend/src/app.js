@@ -2,6 +2,9 @@ import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import { rateLimit } from 'express-rate-limit';
+import compression from 'compression';
+import { createShedder, deadline } from './lib/overload.js';
+import { kickAfterWrites } from './services/syncScheduler.js';
 import { randomUUID } from 'node:crypto';
 import { authenticate, optionalAuth, requireRole, requireAdmin } from './middleware/auth.js';
 import { errorHandler, ok } from './middleware/errors.js';
@@ -25,7 +28,8 @@ export function createApp(deps) {
   const { config } = deps;
   const settings = deps.settings || createSettings(deps.db);
   const notify = deps.notify || createNotifier(deps);
-  const d = { ...deps, settings, notify };
+  const kicker = deps.kicker || { enabled: false, kick: async () => false };
+  const d = { ...deps, settings, notify, kicker };
   const app = express();
   app.disable('x-powered-by');
   app.set('trust proxy', 1); // Cloud Run front end
@@ -33,7 +37,11 @@ export function createApp(deps) {
   app.use(helmet({ contentSecurityPolicy: { directives: { defaultSrc: ["'none'"], frameAncestors: ["'none'"] } }, crossOriginResourcePolicy: { policy: 'same-site' } }));
   app.use(cors({ origin: (origin, cb) => cb(null, !origin || config.corsOrigins.includes(origin)), methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
     allowedHeaders: ['Authorization', 'Content-Type', 'Idempotency-Key', 'X-Firebase-AppCheck', 'X-App-Version-Code', 'X-App-Platform'], maxAge: 600 }));
+  app.use(createShedder({ maxLagMs: config.MAX_LAG_MS, maxInflight: config.MAX_INFLIGHT }));
+  app.use(deadline(config.REQUEST_DEADLINE_MS, config.WRITE_DEADLINE_MS));
+  app.use(compression({ threshold: 1024 }));
   app.use(express.json({ limit: '64kb' }));
+  app.use(kickAfterWrites(kicker));
   app.use((req, res, next) => {
     const t = Date.now();
     res.on('finish', () => logger.info({ rid: req.id, method: req.method, path: req.route?.path || req.path.replace(/[A-Za-z0-9]{20,}/g, ':id'), status: res.statusCode, ms: Date.now() - t }, 'request'));
@@ -44,7 +52,7 @@ export function createApp(deps) {
   app.get('/api/v1/health', (_req, res) => ok(res, { status: 'ok', version: API_VERSION, env: config.APP_ENV, time: new Date().toISOString() }));
 
   const v1 = express.Router();
-  v1.use(rateLimit({ windowMs: 15 * 60e3, limit: config.NODE_ENV === 'test' ? 100000 : 600, standardHeaders: 'draft-8', legacyHeaders: false,
+  v1.use(rateLimit({ windowMs: 15 * 60e3, limit: config.NODE_ENV === 'test' ? 100000 : config.IP_LIMIT_PER_15MIN, standardHeaders: 'draft-8', legacyHeaders: false,
     handler: (_req, res) => res.status(429).json({ ok: false, error: { code: 'RATE_LIMITED', message: 'Too many requests. Please slow down.' } }) }));
   v1.use('/internal', internalRoutes(d));
   v1.use('/public', publicRoutes(d));

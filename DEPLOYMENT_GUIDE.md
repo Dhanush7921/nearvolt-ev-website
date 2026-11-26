@@ -25,6 +25,11 @@ Settings → Environments → create `dev` and `prod` (add required reviewers on
 5. Budget: Billing → Budgets & alerts → e.g. ₹2,000/month with 50/90/100 % email alerts.
 6. The GitHub Pages site keeps running until the Firebase Hosting site is verified; then update links and disable `deploy.yml`.
 
+## 4b. Staging, monitoring and load tests (required before release)
+1. Create `nearvolt-ev-staging` the same way (`ENV=staging`), deploy with `APP_ENV=staging OTP_PROVIDER=mock`.
+2. Run `infra/monitoring/setup-monitoring.sh` and `setup-budget.sh` for staging and prod.
+3. Follow LOAD_TEST_RESULTS.md → "How to reproduce" from a separate VM; update LOAD_TEST_RESULTS.md with the measured numbers.
+
 ## 5. Android release
 See ANDROID_STUDIO_SETUP.md. Build with `NV_PROD_API_BASE_URL=<Cloud Run URL> NV_GOOGLE_WEB_CLIENT_ID=<web OAuth client ID> NV_AUTH_LINK_HOST=<project>.firebaseapp.com ./gradlew bundleProdRelease` (the build refuses a prod release without a real HTTPS API URL).
 

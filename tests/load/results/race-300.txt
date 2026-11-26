@@ -1,0 +1,43 @@
+
+
+  █ THRESHOLDS 
+
+    race_accepted
+    ✓ 'count==2' count=2
+
+    unexpected_errors
+    ✓ 'count==0' count=0
+
+
+  █ TOTAL RESULTS 
+
+    checks_total.......: 300     38.09085/s
+    checks_succeeded...: 100.00% 300 out of 300
+    checks_failed......: 0.00%   0 out of 300
+
+    ✓ accept is 200 or 409
+
+    CUSTOM
+    race_accepted..................: 2      0.253939/s
+    race_created...................: 300    38.09085/s
+    race_refused_409...............: 298    37.836911/s
+    unexpected_errors..............: 0      0/s
+
+    HTTP
+    http_req_duration..............: avg=3.41s min=1.48s med=3.6s  max=5.42s p(90)=5.18s p(95)=5.32s
+      { expected_response:true }...: avg=4.85s min=1.76s med=4.85s max=5.42s p(90)=5.31s p(95)=5.36s
+    http_req_failed................: 49.66% 298 out of 600
+    http_reqs......................: 600    76.1817/s
+
+    EXECUTION
+    iteration_duration.............: avg=6.83s min=5.93s med=6.84s max=7.77s p(90)=7.55s p(95)=7.67s
+    iterations.....................: 300    38.09085/s
+    vus............................: 108    min=0          max=300
+    vus_max........................: 300    min=60         max=300
+
+    NETWORK
+    data_received..................: 818 kB 104 kB/s
+    data_sent......................: 490 kB 62 kB/s
+
+
+

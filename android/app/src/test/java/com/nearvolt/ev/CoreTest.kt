@@ -68,6 +68,13 @@ class CoreTest {
         assertTrue(r is ApiResult.Ok); assertEquals(2, server.requestCount)
     }
 
+    @Test fun overloadedIsRetriedWithJitter() = runTest {
+        server.enqueue(MockResponse.Builder().code(503).addHeader("Retry-After", "0").body("""{"ok":false,"error":{"code":"OVERLOADED","message":"Busy"}}""").build())
+        server.enqueue(MockResponse.Builder().code(200).body("""{"ok":true,"data":{"minSupportedVersionCode":1}}""").build())
+        assertTrue(call(retries = 1) { api.config() } is ApiResult.Ok)
+        repeat(100) { val j = com.nearvolt.ev.data.api.jitter(1000); assertTrue(j in 500..1500) }
+    }
+
     @Test fun maintenance503IsNotRetried() = runTest {
         server.enqueue(MockResponse.Builder().code(503).body("""{"ok":false,"error":{"code":"MAINTENANCE","message":"Down"}}""").build())
         val r = call(retries = 2) { api.config() }

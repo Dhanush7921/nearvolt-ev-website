@@ -88,13 +88,21 @@ suspend fun <T> call(retries: Int = 0, block: suspend () -> retrofit2.Response<E
             if (r.isSuccessful && body?.data != null) return ApiResult.Ok(body.data)
             val err = body?.error ?: r.errorBody()?.string()?.let { runCatching { NvJson.decodeFromString<Envelope<Unit>>(it).error }.getOrNull() }
             val code = err?.code ?: if (r.code() >= 500) "SERVER" else "HTTP_${r.code()}"
-            if (r.code() >= 500 && r.code() != 503 && attempt < retries) { attempt++; delay(wait); wait *= 2; continue }
+            // Retry transient server errors and load-shedding (OVERLOADED/TIMEOUT); never retry maintenance or 4xx.
+            val transient = (r.code() >= 500 && r.code() != 503) || code == "OVERLOADED" || code == "TIMEOUT" || code == "BUSY_RETRY"
+            if (transient && attempt < retries) {
+                val retryAfter = r.headers()["Retry-After"]?.toLongOrNull()?.times(1000)
+                attempt++; delay(jitter(retryAfter ?: wait)); wait *= 2; continue
+            }
             return ApiResult.Err(code, err?.message ?: "Something went wrong. Please try again.", r.code())
         } catch (e: IOException) {
-            if (attempt < retries) { attempt++; delay(wait); wait *= 2; continue }
+            if (attempt < retries) { attempt++; delay(jitter(wait)); wait *= 2; continue }
             return ApiResult.Err("OFFLINE", "No connection. Check your internet and try again.")
         } catch (e: kotlinx.serialization.SerializationException) {
             return ApiResult.Err("PARSE", "Unexpected response from server.")
         }
     }
 }
+
+/** Full-range jitter (50–150 %) so many phones retrying after an outage do not hit the server in lockstep. */
+internal fun jitter(ms: Long): Long = (ms * (0.5 + Math.random())).toLong().coerceAtMost(15_000)

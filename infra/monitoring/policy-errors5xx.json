@@ -1,0 +1,33 @@
+{
+ "displayName": "NEARVOLT ${SERVICE} \u2014 5xx errors",
+ "documentation": {
+  "content": "5xx responses > 1/s for 5 min. See Logs Explorer severity>=ERROR.",
+  "mimeType": "text/markdown"
+ },
+ "combiner": "OR",
+ "conditions": [
+  {
+   "displayName": "5xx rate",
+   "conditionThreshold": {
+    "filter": "metric.type=\"run.googleapis.com/request_count\" AND resource.type=\"cloud_run_revision\" AND resource.labels.service_name=\"${SERVICE}\" AND metric.labels.response_code_class=\"5xx\"",
+    "comparison": "COMPARISON_GT",
+    "thresholdValue": 1,
+    "duration": "300s",
+    "aggregations": [
+     {
+      "alignmentPeriod": "60s",
+      "perSeriesAligner": "ALIGN_RATE",
+      "crossSeriesReducer": "REDUCE_SUM"
+     }
+    ]
+   }
+  }
+ ],
+ "severity": "CRITICAL",
+ "notificationChannels": [
+  "${CHANNEL}"
+ ],
+ "alertStrategy": {
+  "autoClose": "1800s"
+ }
+}

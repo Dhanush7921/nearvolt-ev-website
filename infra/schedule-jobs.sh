@@ -14,7 +14,7 @@ job() {
   else gcloud scheduler jobs create http "$name" --project "$PROJECT_ID" "${args[@]}"; fi
 }
 job nearvolt-expire-requests "* * * * *" expire-requests     # every minute: expire unanswered requests
-job nearvolt-sheets-sync "*/5 * * * *" sheets-sync            # every 5 minutes: drain the Sheets outbox
+job nearvolt-sheets-sync "*/2 * * * *" sheets-sync            # recovery sweep every 2 minutes (Cloud Tasks handles normal sync)
 job nearvolt-sheets-reconcile "15 3 * * *" sheets-reconcile   # daily 03:15 IST: duplicate/backlog report
 # The service allows unauthenticated ingress (the app needs it); /internal/* verifies the OIDC token and the
 # scheduler service-account email itself, so no extra invoker binding is required.

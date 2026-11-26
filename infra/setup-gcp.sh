@@ -9,7 +9,7 @@ gcloud config set project "$PROJECT_ID"
 
 echo "== Enable APIs"
 gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com firestore.googleapis.com \
-  secretmanager.googleapis.com cloudscheduler.googleapis.com sheets.googleapis.com iamcredentials.googleapis.com \
+  secretmanager.googleapis.com cloudscheduler.googleapis.com cloudtasks.googleapis.com sheets.googleapis.com iamcredentials.googleapis.com \
   firebase.googleapis.com identitytoolkit.googleapis.com fcm.googleapis.com firebaseappcheck.googleapis.com \
   storage.googleapis.com logging.googleapis.com monitoring.googleapis.com
 
@@ -35,6 +35,15 @@ gcloud storage buckets add-iam-policy-binding "gs://$BUCKET" --member="serviceAc
 gcloud iam service-accounts add-iam-policy-binding "$API" --member="serviceAccount:$API" --role=roles/iam.serviceAccountTokenCreator >/dev/null
 for r in roles/run.admin roles/cloudbuild.builds.editor roles/artifactregistry.writer roles/storage.admin roles/firebasehosting.admin roles/firebaserules.admin roles/datastore.indexAdmin roles/serviceusage.serviceUsageConsumer; do bind "$DEP" "$r"; done
 gcloud iam service-accounts add-iam-policy-binding "$API" --member="serviceAccount:$DEP" --role=roles/iam.serviceAccountUser >/dev/null
+
+echo "== Cloud Tasks queue for Google Sheets sync (serial, within Sheets API quotas, exponential retry)"
+gcloud tasks queues describe sheets-sync --location="$REGION" >/dev/null 2>&1 || gcloud tasks queues create sheets-sync --location="$REGION"
+gcloud tasks queues update sheets-sync --location="$REGION" --max-dispatches-per-second=1 --max-concurrent-dispatches=1 \
+  --max-attempts=-1 --min-backoff=10s --max-backoff=600s --max-doublings=6 --max-retry-duration=0s
+bind "$API" roles/cloudtasks.enqueuer
+# The API creates tasks that carry an OIDC token for the scheduler SA.
+gcloud iam service-accounts add-iam-policy-binding "$SCH" --member="serviceAccount:$API" --role=roles/iam.serviceAccountUser >/dev/null
+echo "  TASKS_QUEUE=projects/$PROJECT_ID/locations/$REGION/queues/sheets-sync"
 
 echo "== GitHub Actions Workload Identity Federation (keyless)"
 POOL=github; PROVIDER=github

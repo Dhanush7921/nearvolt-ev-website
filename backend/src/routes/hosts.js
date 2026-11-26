@@ -10,6 +10,12 @@ import { geohashForLocation, geohashQueryBounds, distanceKm, roundKm, inServiceA
 import { isOpenNow } from '../lib/hours.js';
 import { enqueue } from '../services/outbox.js';
 import { ts } from '../lib/paginate.js';
+import { memoryLimiter, ttlCache } from '../lib/overload.js';
+import { tooMany } from '../lib/errors.js';
+
+// Local discovery-cache invalidation hook (admin decisions, listing and availability changes on this instance).
+const caches = new Set();
+export const invalidateDiscovery = () => caches.forEach((c) => c.clear());
 
 const EDITABLE = new Set(['DRAFT', 'PENDING_REVIEW', 'REJECTED', 'APPROVED']);
 export const hostSheetRow = (uid, h) => ({ uid, displayName: h.displayName, status: h.status, serviceArea: h.serviceAreaId,
@@ -33,6 +39,12 @@ export function isHostBookable(h, now = new Date()) {
 export function hostRoutes({ db, storage, config, settings }) {
   const r = Router();
   const hosts = db.collection('hosts');
+  // Discovery is the hottest read path. A 5 s per-instance cache of the geohash query result absorbs bursts from
+  // nearby users; bookable status is recomputed from the snapshot time, every response carries `checkedAt`,
+  // and booking always re-checks availability inside a transaction, so cached data can never confirm a booking.
+  const snapCache = ttlCache({ ttlMs: config.NEARBY_CACHE_MS, max: 500 });
+  caches.add(snapCache);
+  const allow = memoryLimiter({ capacity: 30, refillPerSec: 1 }); // per user per instance: burst 30, then 1/s
 
   // ---- Customer-facing discovery (any signed-in user). Exact coordinates are never returned. ----
   r.get('/nearby', validate(nearbyQuery, 'query'), async (req, res, next) => {
@@ -42,15 +54,29 @@ export function hostRoutes({ db, storage, config, settings }) {
       const s = await settings.get();
       const area = inServiceArea({ lat, lng }, s.serviceAreas || []);
       if (!area) return ok(res, { serviceArea: null, items: [], message: 'NEARVOLT EV is not available in this area yet.' });
+      if (!allow(req.user.uid)) throw tooMany('Searching too often. Please wait a moment.');
+      res.set('Cache-Control', 'private, no-store');
       const exclude = new Set((req.q.exclude || '').split(',').filter(Boolean));
+      // Cache per geohash range (shared by every user whose search covers that cell), not per user point:
+      // bounded memory, high hit rate. Distances are still computed from the user's exact point.
       const bounds = geohashQueryBounds([lat, lng], radiusKm * 1000);
-      const snaps = await Promise.all(bounds.map(([a, b]) => hosts.where('status', '==', 'APPROVED').orderBy('geohash').startAt(a).endAt(b).limit(200).get()));
-      const now = new Date();
-      const seen = new Set(), items = [];
-      for (const snap of snaps) for (const d of snap.docs) {
-        if (seen.has(d.id) || exclude.has(d.id) || d.id === req.user.uid) continue;
-        seen.add(d.id);
-        const h = d.data();
+      let oldest = Date.now();
+      const parts = await Promise.all(bounds.map(async ([a, b]) => {
+        const k = `${a}:${b}`;
+        const hit = snapCache.get(k);
+        if (hit) { oldest = Math.min(oldest, hit.at); return hit.v; }
+        const snap = await hosts.where('status', '==', 'APPROVED').orderBy('geohash').startAt(a).endAt(b).limit(200).get();
+        const v = snap.docs.map((d) => [d.id, d.data()]);
+        snapCache.set(k, v);
+        return v;
+      }));
+      const merged = new Map(); for (const part of parts) for (const [id, h] of part) merged.set(id, h);
+      const entry = { v: [...merged.entries()], at: oldest };
+      const now = new Date(entry.at);
+      const items = [];
+      for (const [id, h] of entry.v) {
+        if (exclude.has(id) || id === req.user.uid) continue;
+        const d = { id };
         const km = distanceKm({ lat, lng }, h.location);
         if (km > radiusKm) continue;
         const eq = h.equipment || {};
@@ -99,6 +125,7 @@ export function hostRoutes({ db, storage, config, settings }) {
         enqueue(db, tx, 'HOSTS', req.user.uid, hostSheetRow(req.user.uid, merged));
         return merged;
       });
+      invalidateDiscovery();
       ok(res, ownView(req.user.uid, out));
     } catch (e) { next(e); }
   });
@@ -129,6 +156,7 @@ export function hostRoutes({ db, storage, config, settings }) {
       const until = req.body.until ? new Date(req.body.until) : null;
       if (until && (until < new Date() || until - Date.now() > 24 * 3600e3)) throw bad('Choose a time within the next 24 hours.');
       await ref.update({ available: req.body.available, availableUntil: until, availabilityUpdatedAt: FieldValue.serverTimestamp() });
+      invalidateDiscovery();
       ok(res, { available: req.body.available, until: until?.toISOString() || null });
     } catch (e) { next(e); }
   });

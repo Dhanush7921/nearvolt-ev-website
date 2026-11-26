@@ -13,3 +13,8 @@ export function createMsg91({ authKey, templateId, baseUrl, fetchImpl = fetch })
     verify: (phone, otp) => call('GET', '/api/v5/otp/verify', { mobile: mobile(phone), otp }),
   };
 }
+
+// Staging/test only (config refuses it in prod): lets load tests exercise the full OTP path without paid SMS.
+export function createMockOtp() {
+  return { send: async () => ({ ok: true }), verify: async (_p, otp) => ({ ok: otp === '000000' }) };
+}

@@ -6,7 +6,7 @@ import { ok } from '../middleware/errors.js';
 import { bad, conflict, tooMany, unavailable } from '../lib/errors.js';
 import { otpSendSchema, otpVerifySchema } from '../lib/schemas.js';
 import { normalizeIndianMobile } from '../lib/sanitize.js';
-import { hitLimit } from '../lib/limiter.js';
+import { hitLimit, IP_SHARDS } from '../lib/limiter.js';
 import { logger } from '../lib/logger.js';
 
 const COOLDOWN_S = 30, MAX_SENDS_PER_HOUR = 5, MAX_VERIFY_FAILS = 5, LOCK_S = 3600, SEND_VALID_S = 300;
@@ -22,7 +22,7 @@ export function otpRoutes({ db, auth, config, otp, authOptional }) {
       ensure();
       const phone = normalizeIndianMobile(req.body.phone);
       if (!phone) throw bad('Enter a valid 10-digit Indian mobile number.');
-      await hitLimit(db, `otpip_${req.ip}`, 10, 3600);
+      await hitLimit(db, `otpip_${req.ip}`, config.OTP_IP_LIMIT_PER_HOUR, 3600, IP_SHARDS);
       const ref = throttleRef(phone);
       const now = Date.now();
       await db.runTransaction(async (tx) => {
@@ -37,6 +37,7 @@ export function otpRoutes({ db, auth, config, otp, authOptional }) {
       });
       const out = await otp.send(phone);
       if (!out.ok) { logger.warn({ provider: 'msg91', msg: out.message }, 'otp send failed'); throw unavailable('Could not send the code right now. Please try again.', 'OTP_SEND_FAILED'); }
+      logger.info({ metric: 'otp_send' }, 'otp sent');
       ok(res, { sent: true, resendAfterSeconds: COOLDOWN_S, expiresInSeconds: SEND_VALID_S });
     } catch (e) { next(e); }
   });

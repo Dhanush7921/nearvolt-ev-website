@@ -1,0 +1,33 @@
+{
+ "displayName": "NEARVOLT ${SERVICE} \u2014 Abnormal traffic",
+ "documentation": {
+  "content": "Requests > 300/s for 5 min (\u224810\u00d7 expected peak). Check sources; consider tightening limits or enabling Cloud Armor.",
+  "mimeType": "text/markdown"
+ },
+ "combiner": "OR",
+ "conditions": [
+  {
+   "displayName": "request rate",
+   "conditionThreshold": {
+    "filter": "metric.type=\"run.googleapis.com/request_count\" AND resource.type=\"cloud_run_revision\" AND resource.labels.service_name=\"${SERVICE}\"",
+    "comparison": "COMPARISON_GT",
+    "thresholdValue": 300,
+    "duration": "300s",
+    "aggregations": [
+     {
+      "alignmentPeriod": "60s",
+      "perSeriesAligner": "ALIGN_RATE",
+      "crossSeriesReducer": "REDUCE_SUM"
+     }
+    ]
+   }
+  }
+ ],
+ "severity": "WARNING",
+ "notificationChannels": [
+  "${CHANNEL}"
+ ],
+ "alertStrategy": {
+  "autoClose": "1800s"
+ }
+}

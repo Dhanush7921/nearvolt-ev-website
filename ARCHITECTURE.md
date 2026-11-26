@@ -11,7 +11,7 @@
  (canonical DB)  (identity,      (private host    (push)         via Secret Manager
                   custom claims)  files, signed URLs)
      │
- sheetsOutbox ──(Cloud Scheduler, OIDC, every 5 min)──► Google Sheets NEARVOLT_EV_PRODUCTION
+ sheetsOutbox ──(Cloud Tasks kick per 20 s window + Cloud Scheduler sweep every 2 min, OIDC)──► Google Sheets NEARVOLT_EV_PRODUCTION
  requests     ──(Cloud Scheduler, every minute)──────► expiry job
 ```
 
@@ -27,7 +27,7 @@
 | Exact host location disclosed only to the accepted customer during ACCEPTED/ARRIVED/CHARGING | Residential privacy. Search returns straight-line distance only. |
 | Phone OTP: MSG91 → server verify → Firebase custom token | Cheaper than Firebase SMS in India; OTP is never stored by us; throttle state keyed by salted hash. |
 | Email link sign-in on the Firebase Hosting domain + App Links | Firebase Dynamic Links are discontinued. |
-| Cloud Run `asia-south1`, min 0 / max 5 instances | Low cost, capped blast radius. |
+| Cloud Run `asia-south1`, min 1 / max 50 / concurrency 40 (tunable) | No cold start for emergencies; capped cost. See SCALABILITY_REPORT.md for load shedding, hot-document and caching design. |
 
 ## Data model (Firestore)
 `users/{uid}` (+ `devices/{fcmToken}`, `notifications/{id}`) · `hosts/{uid}` (status DRAFT→PENDING_REVIEW→APPROVED/REJECTED/SUSPENDED, private address/location, geohash, equipment, hours, verification) · `requests/{id}` (state, history[], timestamps, feedback) · `complaints`, `deletionRequests`, `auditLogs`, `loginLogs`, `settings/app` (maintenance, versions, flags, service areas) · `sheetsOutbox`, `idempotency`, `rateLimits`, `otpThrottle` (TTL-expired).

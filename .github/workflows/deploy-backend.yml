@@ -3,14 +3,16 @@ name: Deploy backend (Cloud Run)
 # Manual, per environment. Authentication uses Workload Identity Federation: no service-account keys are stored in GitHub.
 # Required GitHub environment variables (Settings → Environments → dev/prod → Variables):
 #   GCP_PROJECT_ID, GCP_REGION, GCP_WIF_PROVIDER, GCP_DEPLOY_SA, API_RUNTIME_SA, CORS_ORIGINS,
-#   STORAGE_BUCKET, SHEETS_SPREADSHEET_ID, SCHEDULER_SA_EMAIL, APP_ENV (dev|prod)
+#   STORAGE_BUCKET, SHEETS_SPREADSHEET_ID, SCHEDULER_SA_EMAIL, APP_ENV (dev|staging|prod), TASKS_QUEUE
+# Optional scaling variables (defaults = agreed v1.0.0 starting point; tune from load tests):
+#   MIN_INSTANCES (1 — costs money even when idle), MAX_INSTANCES (50), CONCURRENCY (40), MEMORY (1Gi), MAX_INFLIGHT (60)
 on:
   workflow_dispatch:
     inputs:
       environment:
         description: Target environment
         type: choice
-        options: [dev, prod]
+        options: [dev, staging, prod]
         required: true
 
 permissions:
@@ -42,10 +44,11 @@ jobs:
           gcloud run deploy "$SERVICE" \
             --project "${{ vars.GCP_PROJECT_ID }}" --region "${{ vars.GCP_REGION }}" --source backend \
             --service-account "${{ vars.API_RUNTIME_SA }}" --allow-unauthenticated \
-            --min-instances 0 --max-instances 5 --concurrency 80 --cpu 1 --memory 512Mi --timeout 30s \
-            --set-env-vars "NODE_ENV=production,APP_ENV=${{ vars.APP_ENV }},CORS_ORIGINS=${{ vars.CORS_ORIGINS }},STORAGE_BUCKET=${{ vars.STORAGE_BUCKET }},SHEETS_SPREADSHEET_ID=${{ vars.SHEETS_SPREADSHEET_ID }},INTERNAL_OIDC_SA_EMAIL=${{ vars.SCHEDULER_SA_EMAIL }},INTERNAL_OIDC_AUDIENCE=${URL_GUESS:-pending},REQUIRE_APP_CHECK=true,REQUIRE_ADMIN_MFA=true" \
+            --min-instances "${{ vars.MIN_INSTANCES || 1 }}" --max-instances "${{ vars.MAX_INSTANCES || 50 }}" --concurrency "${{ vars.CONCURRENCY || 40 }}" \
+            --cpu 1 --memory "${{ vars.MEMORY || '1Gi' }}" --timeout 30s --cpu-boost --execution-environment gen2 \
+            --set-env-vars "NODE_ENV=production,APP_ENV=${{ vars.APP_ENV }},CORS_ORIGINS=${{ vars.CORS_ORIGINS }},STORAGE_BUCKET=${{ vars.STORAGE_BUCKET }},SHEETS_SPREADSHEET_ID=${{ vars.SHEETS_SPREADSHEET_ID }},INTERNAL_OIDC_SA_EMAIL=${{ vars.SCHEDULER_SA_EMAIL }},INTERNAL_OIDC_AUDIENCE=${URL_GUESS:-pending},REQUIRE_APP_CHECK=true,REQUIRE_ADMIN_MFA=true,TASKS_QUEUE=${{ vars.TASKS_QUEUE }},MAX_INFLIGHT=${{ vars.MAX_INFLIGHT || 60 }},PUBLIC_URL=${URL_GUESS}" \
             --set-secrets "MSG91_AUTH_KEY=msg91-auth-key:latest,MSG91_TEMPLATE_ID=msg91-template-id:latest,OTP_HASH_SALT=otp-hash-salt:latest"
           URL=$(gcloud run services describe "$SERVICE" --region "${{ vars.GCP_REGION }}" --format='value(status.url)')
-          if [ "$URL" != "$URL_GUESS" ]; then gcloud run services update "$SERVICE" --region "${{ vars.GCP_REGION }}" --update-env-vars "INTERNAL_OIDC_AUDIENCE=$URL"; fi
+          if [ "$URL" != "$URL_GUESS" ]; then gcloud run services update "$SERVICE" --region "${{ vars.GCP_REGION }}" --update-env-vars "INTERNAL_OIDC_AUDIENCE=$URL,PUBLIC_URL=$URL"; fi
           echo "url=$URL" >> "$GITHUB_OUTPUT"
           curl -fsS "$URL/api/v1/health"

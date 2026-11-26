@@ -21,3 +21,11 @@ Bug found and fixed by tests: opening hours stored as nested arrays are rejected
 
 ## Not yet tested (release gates)
 Real Google/email/phone sign-in · FCM delivery · App Check enforcement · Cloud Storage uploads · Google Sheets API writes · deployed Cloud Run behaviour · physical-device and low-end-device runs · slow-network behaviour on device · staging load test · accessibility pass with TalkBack.
+
+## Update — scalability work (26 Nov 2026, afternoon)
+- Backend: **36 / 36** tests (adds load-shedding priority, saturation shedding, in-memory limiter, prod refusal of test switches,
+  Cloud Tasks kick, Sheets outage with no loss/duplicates, 20-way booking race, push-provider outage).
+- Android: **7 / 7** unit tests (adds OVERLOADED retry + jitter bounds); lint 0 errors; debug build OK.
+- `npm audit --omit=dev`: 0 vulnerabilities (adds compression 1.8.2, @google-cloud/tasks 7.3.1).
+- Local k6 load tests on a 10,201-user data set: see **LOAD_TEST_RESULTS.md** (5 bottlenecks found and fixed; capacity at
+  1,000–10,000 simultaneous users **not measured** — needs staging and a separate load generator).

@@ -54,34 +54,35 @@ export function createSheetsClient(spreadsheetId) {
 // for the same key on the next run (the key will be found and updated instead).
 export async function syncOutbox({ db, client, batchSize = 200 }) {
   const pending = await db.collection('sheetsOutbox').where('status', '==', 'PENDING').orderBy('createdAt').limit(batchSize).get();
-  if (pending.empty) return { processed: 0 };
+  if (pending.empty) return { processed: 0, more: false };
   const byTab = {};
   for (const d of pending.docs) (byTab[d.data().tab] ||= []).push(d);
   const updates = [], appends = {};
-  for (const [tab, docs] of Object.entries(byTab)) {
-    const keys = await client.readKeys(tab);
-    const index = new Map(keys.map((k, i) => [k, i + 2]));
-    const latest = new Map(); // collapse multiple queued versions of the same key
-    for (const d of docs) latest.set(d.data().key, d.data().row);
-    for (const [key, row] of latest) {
-      const values = toRow(tab, row);
-      if (index.has(key)) updates.push({ tab, rowNumber: index.get(key), values });
-      else (appends[tab] ||= []).push(values);
-    }
-  }
   try {
+    for (const [tab, docs] of Object.entries(byTab)) {
+      const keys = await client.readKeys(tab);
+      const index = new Map(keys.map((k, i) => [k, i + 2]));
+      const latest = new Map(); // collapse multiple queued versions of the same key
+      for (const d of docs) latest.set(d.data().key, d.data().row);
+      for (const [key, row] of latest) {
+        const values = toRow(tab, row);
+        if (index.has(key)) updates.push({ tab, rowNumber: index.get(key), values });
+        else (appends[tab] ||= []).push(values);
+      }
+    }
     await client.writeRows(updates, appends);
   } catch (e) {
+    // Read or write failure: keep rows PENDING (nothing lost), record the attempt, caller returns 503 so Cloud Tasks retries.
     logger.warn({ err: e.message }, 'sheets sync failed; will retry');
     const b = db.batch();
     pending.docs.forEach((d) => b.update(d.ref, { attempts: FieldValue.increment(1), lastError: String(e.message).slice(0, 300) }));
     await b.commit();
-    return { processed: 0, failed: pending.size };
+    return { processed: 0, failed: pending.size, error: true };
   }
   const b = db.batch();
   pending.docs.forEach((d) => b.update(d.ref, { status: 'DONE', doneAt: FieldValue.serverTimestamp() }));
   await b.commit();
-  return { processed: pending.size, updated: updates.length, appended: Object.values(appends).flat().length };
+  return { processed: pending.size, updated: updates.length, appended: Object.values(appends).flat().length, more: pending.size === batchSize };
 }
 
 // Reconciliation: reports duplicate keys per tab (should be zero) and outbox backlog.
@@ -93,6 +94,15 @@ export async function reconcile({ db, client }) {
     keys.forEach((k) => (seen.has(k) ? dups.add(k) : seen.add(k)));
     report[tab] = { rows: keys.length, duplicateKeys: [...dups].slice(0, 50) };
   }
-  const backlog = await db.collection('sheetsOutbox').where('status', '==', 'PENDING').count().get();
-  return { tabs: report, pending: backlog.data().count };
+  return { tabs: report, ...(await backlog(db)) };
 }
+
+// Backlog size and age of the oldest pending row (drives the "sync delayed" alert).
+export async function backlog(db) {
+  const q = db.collection('sheetsOutbox').where('status', '==', 'PENDING');
+  const [count, oldest] = await Promise.all([q.count().get(), q.orderBy('createdAt').limit(1).get()]);
+  const at = oldest.docs[0]?.data().createdAt?.toMillis?.();
+  return { pending: count.data().count, oldestPendingSeconds: at ? Math.round((Date.now() - at) / 1000) : 0 };
+}
+// Fault-injection wrapper (staging only) to prove a Sheets outage never blocks the app and recovers without loss.
+export const faultySheetsClient = () => ({ readKeys: async () => { throw new Error('FAULT_SHEETS'); }, writeRows: async () => { throw new Error('FAULT_SHEETS'); }, ensureTabs: async () => { throw new Error('FAULT_SHEETS'); } });

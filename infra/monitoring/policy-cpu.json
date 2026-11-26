@@ -1,0 +1,33 @@
+{
+ "displayName": "NEARVOLT ${SERVICE} \u2014 High CPU",
+ "documentation": {
+  "content": "Container CPU > 80% for 5 min. Check load, instance count vs MAX_INSTANCES, recent deploys.",
+  "mimeType": "text/markdown"
+ },
+ "combiner": "OR",
+ "conditions": [
+  {
+   "displayName": "CPU p99 > 80%",
+   "conditionThreshold": {
+    "filter": "metric.type=\"run.googleapis.com/container/cpu/utilizations\" AND resource.type=\"cloud_run_revision\" AND resource.labels.service_name=\"${SERVICE}\"",
+    "comparison": "COMPARISON_GT",
+    "thresholdValue": 0.8,
+    "duration": "300s",
+    "aggregations": [
+     {
+      "alignmentPeriod": "60s",
+      "perSeriesAligner": "ALIGN_PERCENTILE_99",
+      "crossSeriesReducer": "REDUCE_MAX"
+     }
+    ]
+   }
+  }
+ ],
+ "severity": "ERROR",
+ "notificationChannels": [
+  "${CHANNEL}"
+ ],
+ "alertStrategy": {
+  "autoClose": "1800s"
+ }
+}

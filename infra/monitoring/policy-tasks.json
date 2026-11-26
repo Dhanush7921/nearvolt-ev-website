@@ -1,0 +1,33 @@
+{
+ "displayName": "NEARVOLT ${SERVICE} \u2014 Cloud Tasks backlog",
+ "documentation": {
+  "content": "sheets-sync queue depth > 50 for 15 min. Sheets may be failing; data is safe in Firestore.",
+  "mimeType": "text/markdown"
+ },
+ "combiner": "OR",
+ "conditions": [
+  {
+   "displayName": "queue depth",
+   "conditionThreshold": {
+    "filter": "metric.type=\"cloudtasks.googleapis.com/queue/depth\" AND resource.type=\"cloud_tasks_queue\" AND resource.labels.queue_id=\"sheets-sync\"",
+    "comparison": "COMPARISON_GT",
+    "thresholdValue": 50,
+    "duration": "900s",
+    "aggregations": [
+     {
+      "alignmentPeriod": "60s",
+      "perSeriesAligner": "ALIGN_MAX",
+      "crossSeriesReducer": "REDUCE_MAX"
+     }
+    ]
+   }
+  }
+ ],
+ "severity": "WARNING",
+ "notificationChannels": [
+  "${CHANNEL}"
+ ],
+ "alertStrategy": {
+  "autoClose": "1800s"
+ }
+}

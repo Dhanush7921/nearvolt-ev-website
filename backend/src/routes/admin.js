@@ -8,9 +8,9 @@ import { listQuery, latLng } from '../lib/schemas.js';
 import { paginate, ts } from '../lib/paginate.js';
 import { auditEntry, writeAudit } from '../services/audit.js';
 import { enqueue } from '../services/outbox.js';
-import { hostSheetRow } from './hosts.js';
+import { hostSheetRow, invalidateDiscovery } from './hosts.js';
 import { applyTransition } from './requests.js';
-import { reconcile } from '../services/sheets.js';
+import { reconcile, backlog } from '../services/sheets.js';
 
 // Inspection checklist an admin must complete (after a real inspection) before a host can go live.
 const CHECKLIST = ['earthingVerified', 'rcdTested', 'circuitRatingAdequate', 'cablingAndSocketCondition', 'weatherProtection',
@@ -115,6 +115,7 @@ export function adminRoutes({ db, auth, storage, config, settings, notify, sheet
         writeAudit(db, tx, auditEntry(req.user, `host.${action}`, `hosts/${req.params.uid}`, action === 'approve' ? { inspector: req.body.inspectorName, date: req.body.inspectionDate } : { reason: req.body.reason }));
         enqueue(db, tx, 'HOSTS', req.params.uid, hostSheetRow(req.params.uid, { ...h, status: toStatus, verification: { reviewedBy: req.user.uid, reviewedAt: new Date().toISOString() } }));
       });
+      invalidateDiscovery();
       const msg = { approve: ['Listing approved', 'Your charging point is verified. Go online to receive requests.'], reject: ['Listing needs changes', 'Open NEARVOLT EV to see what needs fixing.'],
         suspend: ['Listing suspended', 'Your listing is paused. Contact support for details.'], restore: ['Listing restored', 'Your listing is active again.'] }[action];
       notify(req.params.uid, { type: `host.${action}`, title: msg[0], body: msg[1] });
@@ -224,7 +225,7 @@ export function adminRoutes({ db, auth, storage, config, settings, notify, sheet
 
   r.get('/sheets/status', async (_req, res, next) => {
     try {
-      if (!sheetsClient) return ok(res, { configured: false });
+      if (!sheetsClient) return ok(res, { configured: false, ...(await backlog(db)) });
       ok(res, { configured: true, ...(await reconcile({ db, client: sheetsClient })) });
     } catch (e) { next(e); }
   });

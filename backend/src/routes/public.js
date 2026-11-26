@@ -3,7 +3,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { validate } from '../middleware/validate.js';
 import { ok } from '../middleware/errors.js';
 import { deletionRequestSchema } from '../lib/schemas.js';
-import { hitLimit } from '../lib/limiter.js';
+import { hitLimit, IP_SHARDS } from '../lib/limiter.js';
 
 export function publicRoutes({ db, settings, config }) {
   const r = Router();
@@ -21,7 +21,7 @@ export function publicRoutes({ db, settings, config }) {
   r.post('/deletion-requests', validate(deletionRequestSchema), async (req, res, next) => {
     try {
       if (req.body.website) return ok(res, { received: true }); // honeypot
-      await hitLimit(db, `delreq_${req.ip}`, 3, 3600);
+      await hitLimit(db, `delreq_${req.ip}`, 3, 3600, IP_SHARDS);
       await db.collection('deletionRequests').add({ contact: req.body.contact, details: req.body.details || '', status: 'OPEN', createdAt: FieldValue.serverTimestamp() });
       ok(res, { received: true }, 202);
     } catch (e) { next(e); }

@@ -1,0 +1,33 @@
+{
+ "displayName": "NEARVOLT ${SERVICE} \u2014 Excessive OTP requests",
+ "documentation": {
+  "content": "OTP sends > 1/s sustained (SMS cost/abuse). Check otpThrottle lockouts and IP sources.",
+  "mimeType": "text/markdown"
+ },
+ "combiner": "OR",
+ "conditions": [
+  {
+   "displayName": "otp sends",
+   "conditionThreshold": {
+    "filter": "metric.type=\"logging.googleapis.com/user/nearvolt_otp_send\" AND resource.type=\"cloud_run_revision\"",
+    "comparison": "COMPARISON_GT",
+    "thresholdValue": 1,
+    "duration": "300s",
+    "aggregations": [
+     {
+      "alignmentPeriod": "60s",
+      "perSeriesAligner": "ALIGN_RATE",
+      "crossSeriesReducer": "REDUCE_SUM"
+     }
+    ]
+   }
+  }
+ ],
+ "severity": "WARNING",
+ "notificationChannels": [
+  "${CHANNEL}"
+ ],
+ "alertStrategy": {
+  "autoClose": "1800s"
+ }
+}
