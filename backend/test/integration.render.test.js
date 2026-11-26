@@ -87,3 +87,21 @@ test('scheduled job purges expired technical records (Spark has no free TTL dele
   assert.equal(r.body.data.purged, 1);
   assert.equal((await db.collection('rateLimits').doc('live').get()).exists, true);
 });
+
+test('auth rejections carry distinct codes; unverified email/password accounts are refused', async () => {
+  const { app } = makeApp({ ...RENDER, REQUIRE_APP_CHECK: 'true' }, { appCheck: { verifyToken: async (t) => { if (t !== 'good') throw Object.assign(new Error('bad'), { code: 'app-check/invalid-argument' }); return {}; } } });
+  const t = await tokenFor('u1');
+  assert.equal((await request(app).get('/api/v1/me').set(bearer(t)).expect(401)).body.error.code, 'APP_CHECK_REQUIRED');
+  assert.equal((await request(app).get('/api/v1/me').set(bearer(t)).set('X-Firebase-AppCheck', 'bad').expect(401)).body.error.code, 'APP_CHECK_FAILED');
+  assert.equal((await request(app).get('/api/v1/me').set(bearer('garbage')).set('X-Firebase-AppCheck', 'good').expect(401)).body.error.code, 'SESSION_INVALID');
+  await request(app).get('/api/v1/me').set(bearer(t)).set('X-Firebase-AppCheck', 'good').expect(200);
+  // email/password user, unverified
+  const { auth } = await import('./helpers.js');
+  await auth.createUser({ uid: 'pw1', email: 'pw1@example.test', password: 'Str0ngPass!', emailVerified: false });
+  const r = await fetch(`http://${process.env.FIREBASE_AUTH_EMULATOR_HOST}/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=fake`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'pw1@example.test', password: 'Str0ngPass!', returnSecureToken: true }) });
+  const idToken = (await r.json()).idToken;
+  assert.equal((await request(app).get('/api/v1/me').set(bearer(idToken)).set('X-Firebase-AppCheck', 'good').expect(403)).body.error.code, 'EMAIL_NOT_VERIFIED');
+  await auth.updateUser('pw1', { emailVerified: true });
+  const r2 = await fetch(`http://${process.env.FIREBASE_AUTH_EMULATOR_HOST}/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=fake`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'pw1@example.test', password: 'Str0ngPass!', returnSecureToken: true }) });
+  await request(app).get('/api/v1/me').set(bearer((await r2.json()).idToken)).set('X-Firebase-AppCheck', 'good').expect(200);
+});

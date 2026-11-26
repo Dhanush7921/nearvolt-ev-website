@@ -1,4 +1,8 @@
-import { unauth, forbidden } from '../lib/errors.js';
+import { unauth, forbidden, ApiError } from '../lib/errors.js';
+import { logger } from '../lib/logger.js';
+
+// Distinct, actionable rejection codes (logged without token contents) so failed sign-ins can be diagnosed.
+const reject = (status, code, message, extra) => { logger.warn({ metric: 'auth_fail', code, ...extra }, 'auth rejected'); return new ApiError(status, code, message); };
 
 // Verifies Firebase ID token (with revocation check) and optional App Check token.
 export function authenticate({ auth, appCheck, config }) {
@@ -6,14 +10,20 @@ export function authenticate({ auth, appCheck, config }) {
     try {
       if (config.REQUIRE_APP_CHECK) {
         const t = req.get('X-Firebase-AppCheck');
-        if (!t) throw unauth('App verification required.');
-        try { await appCheck.verifyToken(t); } catch { throw unauth('App verification failed.'); }
+        if (!t) throw reject(401, 'APP_CHECK_REQUIRED', 'This copy of the app could not be verified (App Check token missing).');
+        try { await appCheck.verifyToken(t); } catch (e) { throw reject(401, 'APP_CHECK_FAILED', 'This copy of the app could not be verified (App Check token rejected).', { reason: e.code || e.message?.slice(0, 120) }); }
       }
       const h = req.get('Authorization') || '';
       const m = h.match(/^Bearer (.+)$/);
       if (!m) throw unauth();
       let decoded;
-      try { decoded = await auth.verifyIdToken(m[1], true); } catch { throw unauth('Session expired. Please sign in again.'); }
+      try { decoded = await auth.verifyIdToken(m[1], true); } catch (e) {
+        throw reject(401, 'SESSION_INVALID', 'Your session is not valid. Please sign in again.', { reason: e.code || e.message?.slice(0, 120) });
+      }
+      // Email/password accounts must verify their email before using the service.
+      if (decoded.firebase?.sign_in_provider === 'password' && !decoded.email_verified) {
+        throw reject(403, 'EMAIL_NOT_VERIFIED', 'Verify your email address to continue. Check your inbox for the verification link.');
+      }
       req.user = {
         uid: decoded.uid,
         role: decoded.role || null, // 'customer' | 'host' (custom claim, set by server only)
