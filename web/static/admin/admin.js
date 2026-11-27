@@ -139,7 +139,8 @@ const VIEWS = {
     const p = pager(async (cursor) => {
       const d = await api(`/admin/requests?limit=25${sel.value ? `&status=${sel.value}` : ''}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`);
       return { nextCursor: d.nextCursor, node: table([['Created', (x) => fmt(x.createdAt)], ['Status', (x) => pill(x.status)], ['Customer', (x) => x.customerName], ['Host', (x) => x.hostName],
-        ['Vehicle', (x) => `${x.vehicleType} · ${x.connector}`], ['Distance', (x) => `${x.straightLineKm} km`], ['History', (x) => x.history.map((e) => e.to).join(' → ')],
+        ['Vehicle', (x) => `${x.vehicleType} · ${x.connector}`], ['Battery', (x) => x.batteryPercent == null ? '—' : h('span', { class: x.urgent ? 'pill URGENT' : 'pill' }, `${x.batteryPercent}%${x.urgent ? ' · urgent' : ''}`)],
+        ['Session PIN', (x) => pill(x.pinState)], ['Distance', (x) => `${x.straightLineKm} km`], ['History', (x) => x.history.map((e) => e.to).join(' → ')],
         ['', (x) => x.status === 'REQUESTED' ? h('button', { class: 'ghost', onclick: async () => { const r = reasonPrompt('Reason for closing this request'); if (r) { await api(`/admin/requests/${x.id}/cancel`, { method: 'POST', body: { reason: r } }); toast('Closed'); p.go(true); } } }, 'Close') : '']], d.items) };
     });
     sel.addEventListener('change', () => p.go(true));
@@ -169,7 +170,11 @@ const VIEWS = {
   },
   async security(el) {
     const d = await api('/admin/security-events?limit=50');
-    el.replaceChildren(h('div', { class: 'card stat' }, h('b', {}, d.activeOtpLockouts), 'Phone numbers currently locked after failed OTP attempts'), h('h3', {}, 'Security-relevant admin actions'),
+    const p = d.posture || {};
+    const flag = (on, label) => h('div', { class: 'card stat' + (on ? '' : ' alert') }, h('b', {}, on ? 'On' : 'Off'), label);
+    el.replaceChildren(h('div', { class: 'grid' }, flag(p.adminMfaRequired, 'Admin two-step verification enforced'), flag(p.appCheckRequired, 'App Check enforced for app traffic'),
+        h('div', { class: 'card stat' + (d.activeOtpLockouts ? ' alert' : '') }, h('b', {}, d.activeOtpLockouts), 'Phone numbers locked after failed OTP attempts')),
+      h('h3', {}, 'Security-relevant admin actions'),
       table([['When', (x) => fmt(x.at)], ['Action', (x) => x.action], ['Actor', (x) => x.actorUid], ['Target', (x) => x.target]], d.items));
   },
   async audit(el) {

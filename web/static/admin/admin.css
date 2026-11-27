@@ -41,3 +41,5 @@ nav.tabs button:active{transform:scale(.97)}nav.tabs button[aria-selected=true]{
 .kpis{gap:18px;margin-top:6px;font-size:13px;color:var(--muted)}.kpis b{color:var(--text);font-size:16px}
 @media (max-width:640px){main{padding:12px}table{display:block;overflow-x:auto;white-space:nowrap}.grid{grid-template-columns:repeat(2,1fr)}.card.stat b{font-size:24px}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+.pill.ACTIVE,.pill.VERIFIED{background:#cfe8d6;color:#0b2b26}.pill.LOCKED,.pill.EXPIRED{background:#f6d3d0;color:#5f1410}.pill.LEGACY,.pill.NONE{background:var(--line)}
+h3{margin:18px 0 8px}section#view>.row{margin-bottom:12px}

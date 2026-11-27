@@ -14,7 +14,10 @@ export function publicRoutes({ db, settings, config }) {
       ok(res, { maintenance: s.maintenance, minSupportedVersionCode: s.minSupportedVersionCode, latestVersionCode: s.latestVersionCode,
         featureFlags: { ...s.featureFlags, phoneLogin: Boolean(s.featureFlags?.phoneLogin && config.phoneOtpEnabled) },
         serviceAreas: (s.serviceAreas || []).filter((a) => a.active).map(({ id, name, center, radiusKm }) => ({ id, name, center, radiusKm })),
-        supportContact: s.supportContact, requestTtlSeconds: config.REQUEST_TTL_SECONDS });
+        supportContact: s.supportContact, requestTtlSeconds: config.REQUEST_TTL_SECONDS,
+        // Server capabilities (code-defined, not admin-editable). V1.1 apps only use these features when advertised,
+        // so a V1.1 APK keeps working against a V1.0 backend during rollout and after a rollback.
+        capabilities: { apiLevel: 2, sessionPin: true, batteryPercent: true } });
     } catch (e) { next(e); }
   });
   // Public account-deletion request (Play Store requirement for users who no longer have the app).

@@ -35,7 +35,7 @@ const hostAdminView = (d) => { const h = d.data(); return { uid: d.id, displayNa
   verification: h.verification ? { ...h.verification, reviewedAt: ts(h.verification.reviewedAt) } : null, available: h.available, activeSessions: h.activeSessions || 0,
   rating: h.rating, submittedAt: ts(h.submittedAt), updatedAt: ts(h.updatedAt) }; };
 
-export function adminRoutes({ db, auth, fileStore, settings, notify, sheetsClient }) {
+export function adminRoutes({ db, auth, fileStore, settings, notify, sheetsClient, config }) {
   const r = Router();
   const audit = (req, action, target, meta) => writeAudit(db, null, auditEntry(req.user, action, target, meta));
 
@@ -157,7 +157,10 @@ export function adminRoutes({ db, auth, fileStore, settings, notify, sheetsClien
       const col = db.collection('requests');
       let q = col; if (req.q.status) q = q.where('status', '==', req.q.status);
       const page = await paginate(q.orderBy('createdAt', 'desc'), col, req.q);
-      ok(res, { items: page.items.map((d) => { const x = d.data(); return { id: d.id, status: x.status, customerUid: x.customerUid, customerName: x.customerName, hostUid: x.hostUid, hostName: x.hostName, connector: x.connector, vehicleType: x.vehicleType, straightLineKm: x.straightLineKm, createdAt: ts(x.createdAt), updatedAt: ts(x.updatedAt), history: (x.history || []).map((e) => ({ ...e, at: ts(e.at) })) }; }), nextCursor: page.nextCursor });
+      ok(res, { items: page.items.map((d) => { const x = d.data(); return { id: d.id, status: x.status, customerUid: x.customerUid, customerName: x.customerName, hostUid: x.hostUid, hostName: x.hostName, connector: x.connector, vehicleType: x.vehicleType, straightLineKm: x.straightLineKm, createdAt: ts(x.createdAt), updatedAt: ts(x.updatedAt),
+        batteryPercent: x.batteryPercent ?? null, urgent: x.batteryPercent != null && x.batteryPercent <= 10,
+        // Session PIN state only — the code itself is never sent to admins.
+        pinState: x.pin ? (x.pin.expiresAt.toMillis() <= Date.now() ? 'EXPIRED' : x.pin.attempts >= 5 ? 'LOCKED' : 'ACTIVE') : x.pinPolicy ? (x.status === 'CHARGING' || x.status === 'COMPLETED' ? 'VERIFIED' : 'NONE') : 'LEGACY', history: (x.history || []).map((e) => ({ ...e, at: ts(e.at) })) }; }), nextCursor: page.nextCursor });
     } catch (e) { next(e); }
   });
   r.post('/requests/:id/cancel', validate(reasonSchema), async (req, res, next) => {
@@ -214,7 +217,7 @@ export function adminRoutes({ db, auth, fileStore, settings, notify, sheetsClien
       const col = db.collection('auditLogs');
       const page = await paginate(col.where('action', 'in', ['user.disable', 'user.enable', 'account.delete', 'host.suspend', 'host.view_private', 'settings.update', 'notification.broadcast']).orderBy('at', 'desc'), col, req.q);
       const locks = await db.collection('otpThrottle').where('lockedUntil', '>', new Date()).count().get();
-      ok(res, { activeOtpLockouts: locks.data().count, items: page.items.map((d) => ({ id: d.id, ...d.data(), at: ts(d.data().at) })), nextCursor: page.nextCursor });
+      ok(res, { activeOtpLockouts: locks.data().count, posture: { adminMfaRequired: Boolean(config?.REQUIRE_ADMIN_MFA), appCheckRequired: Boolean(config?.REQUIRE_APP_CHECK), env: config?.APP_ENV || null }, items: page.items.map((d) => ({ id: d.id, ...d.data(), at: ts(d.data().at) })), nextCursor: page.nextCursor });
     } catch (e) { next(e); }
   });
 

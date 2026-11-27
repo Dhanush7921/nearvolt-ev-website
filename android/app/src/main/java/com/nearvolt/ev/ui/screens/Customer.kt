@@ -182,7 +182,8 @@ fun FindScreen(app: AppViewModel, exclude: String?, openRequest: (String) -> Uni
     if (manualOpen) ManualLocationDialog(onDismiss = { manualOpen = false }) { manualOpen = false; vm.manual(it) }
     selected?.let { h ->
         ModalBottomSheet(onDismissRequest = { selected = null; vm.clearCreateError() }) {
-            HostDetail(h, s, onRequest = { note, battery -> vm.create(h, note, battery) { id -> selected = null; openRequest(id) } })
+            val batteryOk = appState.config?.capabilities?.batteryPercent == true
+            HostDetail(h, s, batteryOk, onRequest = { note, battery -> vm.create(h, note, if (batteryOk) battery else null) { id -> selected = null; openRequest(id) } })
         }
     }
 }
@@ -214,7 +215,7 @@ private fun HostCard(h: HostSummary, onClick: () -> Unit) {
 }
 
 @Composable
-private fun HostDetail(h: HostSummary, s: FindState, onRequest: (String?, Int?) -> Unit) {
+private fun HostDetail(h: HostSummary, s: FindState, batterySupported: Boolean, onRequest: (String?, Int?) -> Unit) {
     var confirmed by remember { mutableStateOf(false) }
     var battery by remember { mutableFloatStateOf(20f) }
     var batteryConfirmed by remember { mutableStateOf(false) }
@@ -232,13 +233,15 @@ private fun HostDetail(h: HostSummary, s: FindState, onRequest: (String?, Int?) 
         else if (!compatible) InlineMessage(stringResource(R.string.detail_incompatible))
         else {
             OutlinedTextField(note, { note = it.take(300) }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.field_note_optional)) }, maxLines = 3)
-            Text(stringResource(R.string.battery_question, battery.toInt()), style = MaterialTheme.typography.titleSmall)
-            Slider(battery, { battery = it; batteryConfirmed = false }, valueRange = 0f..100f, steps = 19,
-                modifier = Modifier.semantics { contentDescription = "Remaining battery ${battery.toInt()} percent" })
-            CheckRow(batteryConfirmed, { batteryConfirmed = it }, stringResource(R.string.battery_confirm, battery.toInt()))
+            if (batterySupported) {
+                Text(stringResource(R.string.battery_question, battery.toInt()), style = MaterialTheme.typography.titleSmall)
+                Slider(battery, { battery = it; batteryConfirmed = false }, valueRange = 0f..100f, steps = 19,
+                    modifier = Modifier.semantics { contentDescription = "Remaining battery ${battery.toInt()} percent" })
+                CheckRow(batteryConfirmed, { batteryConfirmed = it }, stringResource(R.string.battery_confirm, battery.toInt()))
+            }
             CheckRow(confirmed, { confirmed = it }, stringResource(R.string.detail_confirm_compat, Labels.connector(connector), Labels.kw(h.powerKw)))
             InlineMessage(s.createError)
-            PrimaryButton(stringResource(R.string.detail_request), { onRequest(note, battery.toInt()) }, enabled = confirmed && batteryConfirmed, loading = s.creating)
+            PrimaryButton(stringResource(R.string.detail_request), { onRequest(note, battery.toInt()) }, enabled = confirmed && (batteryConfirmed || !batterySupported), loading = s.creating)
         }
     }
 }

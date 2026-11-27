@@ -71,10 +71,12 @@ export function Cinema() {
         const nav = navigator as Navigator & { deviceMemory?: number; connection?: { saveData?: boolean } };
         // Very constrained devices (≤2 GB RAM) or Data Saver get the static illustration instead of WebGL.
         if (nav.connection?.saveData || (nav.deviceMemory !== undefined && nav.deviceMemory <= 2)) return setMode('fallback');
-        const low = matchMedia('(pointer: coarse)').matches || window.innerWidth < 820 || (nav.deviceMemory !== undefined && nav.deviceMemory <= 4)
-          || (navigator.hardwareConcurrency !== undefined && navigator.hardwareConcurrency <= 4);
+        const mobile = matchMedia('(pointer: coarse)').matches || window.innerWidth < 820;
+        const low = mobile || (nav.deviceMemory !== undefined && nav.deviceMemory <= 4) || (navigator.hardwareConcurrency !== undefined && navigator.hardwareConcurrency <= 2);
         try {
-          scene = new mod.ChargingScene({ canvas, quality: low ? 'low' : 'high', theme: currentTheme(), reducedMotion: prefersReducedMotion(), modelUrl, useModel: true });
+          scene = new mod.ChargingScene({ canvas, quality: low ? 'low' : 'high', theme: currentTheme(), reducedMotion: prefersReducedMotion(), modelUrl,
+            // Phones/tablets use the procedural car: saves the 4.6 MB model download on mobile data. Desktops keep the detailed model.
+            useModel: !mobile });
         } catch (err) {
           console.warn('[NEARVOLT EV] 3D unavailable, showing the illustration instead.', err);
           return setMode('fallback');

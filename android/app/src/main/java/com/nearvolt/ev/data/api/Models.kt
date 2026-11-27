@@ -24,6 +24,7 @@ import kotlinx.serialization.Serializable
 @Serializable data class PublicConfig(
     val maintenance: Maintenance = Maintenance(), val minSupportedVersionCode: Int = 1, val latestVersionCode: Int = 1,
     val featureFlags: Map<String, Boolean> = emptyMap(), val serviceAreas: List<ServiceArea> = emptyList(),
+    val capabilities: Capabilities = Capabilities(),
     val supportContact: SupportContact? = null, val requestTtlSeconds: Int = 300,
 )
 
@@ -104,3 +105,6 @@ object Connectors {
     val ALL = listOf("DOMESTIC_15A", "INDUSTRIAL_16A", "TYPE2_AC", "BHARAT_AC001", "LECCS", "CCS2", "BHARAT_DC001", "CHADEMO", "GBT")
 }
 object VehicleTypes { val ALL = listOf("two_wheeler", "three_wheeler", "car") }
+
+/** Absent on a V1.0 backend → all false, and the app behaves like V1.0 (no battery field, no PIN UI). */
+@Serializable data class Capabilities(val apiLevel: Int = 1, val sessionPin: Boolean = false, val batteryPercent: Boolean = false)

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { createInlet, type ConnectorMats, type InletParts } from './connector';
@@ -20,7 +21,8 @@ const PORT_Z_FROM_FRONT_WHEEL = -0.66; // behind the front wheel arch, ahead of 
 const PORT_HEIGHT = 0.74;
 
 export async function loadCar(url: string, m: ConnectorMats, onProgress?: (p: number) => void): Promise<CarRig> {
-  const gltf = await new GLTFLoader().loadAsync(url, (e) => {
+  // Meshopt-compressed models decode locally (bundled decoder; no CDN), so a smaller GLB can be dropped in without code changes.
+  const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(url, (e) => {
     if (e.total) onProgress?.(e.loaded / e.total);
   });
   const root = gltf.scene;

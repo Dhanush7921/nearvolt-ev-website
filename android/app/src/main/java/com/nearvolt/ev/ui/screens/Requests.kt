@@ -127,7 +127,7 @@ fun RequestScreen(id: String, onBack: () -> Unit, findAlternatives: (String) -> 
                 if (r.status in setOf("ACCEPTED", "ARRIVED", "CHARGING")) EvIllustration(charging = r.status == "CHARGING", height = 120.dp)
                 if (r.status == "CHARGING") ChargingProgress(r)
                 InlineMessage(s.actionError)
-                Actions(r, s.busy, onAct = { a -> when (a) { "cancel", "reject", "dispute" -> confirm = a; "start" -> pinEntry = true; else -> vm.act(a) } }, findAlternatives = { findAlternatives(r.hostId) })
+                Actions(r, s.busy, onAct = { a -> when (a) { "cancel", "reject", "dispute" -> confirm = a; "start" -> if (r.pinStatus != null) pinEntry = true else vm.act("start"); else -> vm.act(a) } }, findAlternatives = { findAlternatives(r.hostId) })
                 if (r.status == "COMPLETED" && !r.feedbackGiven) RateCard(busy = s.busy == "rate") { st, c -> vm.rate(st, c) }
                 Timeline(r)
                 if (r.status in RequestText.ACTIVE) SafetyCard()
