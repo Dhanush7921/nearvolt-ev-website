@@ -32,7 +32,7 @@ fun MainScreen(vm: AppViewModel) {
     else listOf(Tab("find", R.string.tab_find, Icons.Outlined.Search), Tab("activity", R.string.tab_activity, Icons.Outlined.History),
         Tab("alerts", R.string.tab_alerts, Icons.Outlined.Notifications), Tab("account", R.string.tab_account, Icons.Outlined.Person))
     val entry by nav.currentBackStackEntryAsState()
-    val current = entry?.destination?.route
+    val current = entry?.destination?.route?.substringBefore("?")
 
     LaunchedEffect(state.openRequestId) { state.openRequestId?.let { nav.navigate("request/$it"); vm.requestOpened() } }
 
