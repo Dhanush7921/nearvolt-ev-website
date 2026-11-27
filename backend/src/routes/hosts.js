@@ -78,13 +78,16 @@ export function hostRoutes({ db, config, settings, fileStore }) {
       for (const [id, h] of entry.v) {
         if (exclude.has(id) || id === req.user.uid) continue;
         const d = { id };
-        const km = distanceKm({ lat, lng }, h.location);
+        // Distance (and the radius filter) use the public ~1 km cell centre, never the exact point, so repeated queries
+        // from many positions (trilateration) or radius probing can only ever recover the cell centre.
+        const area = approxArea(h.location);
+        const km = distanceKm({ lat, lng }, area);
         if (km > radiusKm) continue;
         const eq = h.equipment || {};
         const compatible = (!connector || eq.connectors?.includes(connector)) && (!vehicleType || eq.vehicleTypes?.includes(vehicleType));
         if (!compatible) continue;
         items.push({
-          hostId: d.id, displayName: h.displayName, straightLineKm: roundKm(km), approxArea: approxArea(h.location),
+          hostId: d.id, displayName: h.displayName, straightLineKm: roundKm(km), approxArea: area,
           connectors: eq.connectors, vehicleTypes: eq.vehicleTypes, powerKw: eq.powerKw, chargerType: eq.chargerType, phase: eq.phase,
           bookableNow: isHostBookable(h, now), openNow: isOpenNow(h.hours, now), hours: h.hours,
           rating: h.rating?.count ? { average: Math.round((h.rating.sum / h.rating.count) * 10) / 10, count: h.rating.count } : null,

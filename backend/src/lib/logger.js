@@ -6,7 +6,7 @@ export const logger = pino({
   formatters: { level: (label) => ({ severity: label.toUpperCase() }) },
   redact: {
     paths: ['req.headers.authorization', 'req.headers["x-firebase-appcheck"]', '*.otp', '*.token', '*.idToken',
-      '*.phone', '*.phoneNumber', '*.email', '*.lat', '*.lng', '*.address', 'err.config.headers'],
+      '*.phone', '*.phoneNumber', '*.pin', 'pin', 'req.body.pin', '*.email', '*.lat', '*.lng', '*.address', 'err.config.headers'],
     censor: '[redacted]',
   },
 });

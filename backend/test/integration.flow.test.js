@@ -78,6 +78,13 @@ test('unverified hosts are hidden; approval requires full checklist', async () =
   // Privacy across endpoints: discovery never carries the exact coordinates or the street address.
   const nbJson = JSON.stringify(n.body);
   assert.ok(!nbJson.includes('17.7231') && !nbJson.includes('83.3013') && !nbJson.includes('MVP Colony'));
+  // Trilateration resistance: distances from several probe points all match the public cell centre, not the exact point.
+  const { distanceKm: dk, roundKm: rk } = await import('../src/lib/geo.js');
+  for (const probe of [{ lat: 17.70, lng: 83.29 }, { lat: 17.75, lng: 83.33 }, { lat: 17.72, lng: 83.34 }]) {
+    const pr = await request(app).get('/api/v1/hosts/nearby').query({ ...probe, radiusKm: 15 }).set(bearer(T.c1)).expect(200);
+    const it = pr.body.data.items.find((x) => x.hostId === 'host1');
+    assert.equal(it.straightLineKm, rk(dk(probe, it.approxArea)));
+  }
   await request(app).get('/api/v1/hosts/me').set(bearer(T.c1)).expect(403); // host-only and keyed by caller: no host id to tamper with
   assert.ok(Math.abs(((item.approxArea.lat * 1e4) % 100) - 50) < 1e-6 || Math.abs(((item.approxArea.lat * 1e4) % 100) + 50) < 1e-6); assert.equal(item.address, undefined); // no private data in search
   await request(app).post('/api/v1/admin/hosts/host1/suspend').set(bearer(T.admin)).send({ reason: 'Safety complaint under review' }).expect(200);
