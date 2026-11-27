@@ -240,4 +240,27 @@
     <string name="verify_body">We sent a verification link to %1$s. Open it, then come back and tap “I\'ve verified”.</string>
     <string name="verify_done">I\'ve verified</string>
     <string name="verify_resend">Resend verification email</string>
+    <string name="battery_label">Battery %1$d%%</string>
+    <string name="battery_urgent">Battery %1$d%% · Urgent</string>
+    <string name="battery_question">Remaining battery: %1$d%%</string>
+    <string name="battery_confirm">I confirm my battery is about %1$d%%</string>
+    <string name="pin_title">Session PIN</string>
+    <string name="pin_share_body">Show this PIN to the host only when you are at the charging point. Never share it by phone or message.</string>
+    <string name="pin_locked">Too many wrong attempts. Refresh the PIN, then show the new one to the host.</string>
+    <string name="pin_expired">This PIN has expired. Refresh it to get a new one.</string>
+    <string name="pin_refresh">Refresh PIN</string>
+    <string name="pin_enter_title">Enter session PIN</string>
+    <string name="pin_enter_body">Ask the driver for the 4-digit PIN shown in their app. This confirms you are charging the right vehicle.</string>
+    <string name="pin_label">4-digit PIN</string>
+    <string name="pin_ask_refresh">The PIN is locked or expired. Ask the driver to refresh it.</string>
+    <string name="charging_in_progress">Charging in progress</string>
+    <string name="charging_no_metering">Time since charging started. NEARVOLT EV does not meter energy; agree the charge with the host.</string>
+    <string name="emergency_find_nearest">Emergency: find nearest charge</string>
+    <string name="emergency_nearest_found">Emergency: open nearest available host</string>
+    <string name="emergency_none">No available host nearby right now</string>
+    <string name="splash_tagline">Emergency EV charging, close to home</string>
+    <string name="splash_waking">Connecting to NEARVOLT servers… this can take up to a minute.</string>
+    <string name="dash_hero_sub">%1$d new request(s) waiting</string>
+    <string name="dash_online">Online · accepting requests</string>
+    <string name="dash_offline">Offline</string>
 </resources>

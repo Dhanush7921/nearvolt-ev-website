@@ -58,10 +58,13 @@ export const nearbyQuery = z.object({
 export const createRequestSchema = z.object({
   hostId: str(128), vehicleType: z.enum(VEHICLE_TYPES), connector: z.enum(CONNECTORS),
   customerLocation: latLng, compatibilityConfirmed: z.literal(true), note: str(300, 0).optional(),
+  // User-confirmed remaining battery (optional for V1.0 clients).
+  batteryPercent: z.number().int().min(0).max(100).optional(),
 }).strict();
 export const transitionSchema = z.object({
   action: z.enum(['accept', 'reject', 'cancel', 'arrive', 'start', 'complete', 'dispute']),
   reason: str(300, 0).optional(),
+  pin: z.string().regex(/^\d{4}$/).optional(), // required by the server for 'start'
 }).strict();
 export const feedbackSchema = z.object({ rating: z.number().int().min(1).max(5), comment: str(500, 0).optional() }).strict();
 export const ticketSchema = z.object({

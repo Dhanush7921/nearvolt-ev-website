@@ -42,6 +42,7 @@ interface ApiService {
     @GET("api/v1/requests") suspend fun requests(@Query("as") asRole: String, @Query("status") status: String?, @Query("cursor") cursor: String?): Response<Envelope<Page<ChargeRequest>>>
     @GET("api/v1/requests/{id}") suspend fun request(@Path("id") id: String): Response<Envelope<ChargeRequest>>
     @POST("api/v1/requests/{id}/transition") suspend fun transition(@Path("id") id: String, @Body b: TransitionBody): Response<Envelope<ChargeRequest>>
+    @POST("api/v1/requests/{id}/pin") suspend fun reissuePin(@Path("id") id: String): Response<Envelope<ChargeRequest>>
     @POST("api/v1/requests/{id}/feedback") suspend fun feedback(@Path("id") id: String, @Body b: FeedbackBody): Response<Envelope<Ack>>
 
     @POST("api/v1/support/tickets") suspend fun createTicket(@Body b: TicketBody): Response<Envelope<TicketCreated>>

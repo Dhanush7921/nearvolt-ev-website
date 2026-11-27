@@ -108,9 +108,10 @@ fun SignInScreen(vm: AppViewModel) {
     }
 
     Column(Modifier.fillMaxSize().systemBarsPadding().imePadding().verticalScroll(rememberScrollState()).padding(24.dp)) {
+        Box(Modifier.fillMaxWidth().clip(MaterialTheme.shapes.large).background(com.nearvolt.ev.ui.theme.Brand.heroGradient).padding(vertical = 20.dp), contentAlignment = Alignment.Center) {
+            com.nearvolt.ev.ui.components.LogoReveal(size = 72.dp)
+        }
         Spacer(Modifier.height(24.dp))
-        Image(painterResource(R.drawable.ic_brand_mark), null, Modifier.size(64.dp))
-        Spacer(Modifier.height(20.dp))
         Text(stringResource(R.string.signin_title), style = MaterialTheme.typography.headlineMedium)
         Spacer(Modifier.height(8.dp))
         Text(stringResource(R.string.signin_body), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -293,6 +294,24 @@ fun ConnectorPicker(value: String?, onChange: (String) -> Unit, allowAny: Boolea
         ExposedDropdownMenu(open, { open = false }) {
             if (allowAny) DropdownMenuItem(text = { Text(anyLabel) }, onClick = { onChange(""); open = false })
             Connectors.ALL.forEach { c -> DropdownMenuItem(text = { Text(Labels.connector(c)) }, onClick = { onChange(c); open = false }) }
+        }
+    }
+}
+
+/** Cinematic launch screen shown while configuration loads (also covers a Render cold start, which can take ~1 minute). */
+@Composable
+fun SplashScreen() {
+    var slow by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { delay(6_000); slow = true }
+    Box(Modifier.fillMaxSize().background(com.nearvolt.ev.ui.theme.Brand.heroGradient), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            com.nearvolt.ev.ui.components.LogoReveal(size = 112.dp, loop = true)
+            Spacer(Modifier.height(8.dp))
+            Text("NEARVOLT EV", style = MaterialTheme.typography.headlineMedium, color = com.nearvolt.ev.ui.theme.Brand.Mint)
+            Text(stringResource(R.string.splash_tagline), style = MaterialTheme.typography.bodyMedium, color = com.nearvolt.ev.ui.theme.Brand.Sage)
+            Spacer(Modifier.height(28.dp))
+            com.nearvolt.ev.ui.components.EnergyFlowBar(Modifier.width(160.dp), 4.dp)
+            if (slow) { Spacer(Modifier.height(14.dp)); Text(stringResource(R.string.splash_waking), style = MaterialTheme.typography.bodySmall, color = com.nearvolt.ev.ui.theme.Brand.Sage) }
         }
     }
 }

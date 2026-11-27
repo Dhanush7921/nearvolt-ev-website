@@ -88,8 +88,12 @@ fun HostDashboard(openRequest: (String) -> Unit, openListing: () -> Unit, openHi
     val s by vm.state.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { vm.load(); PushEvents.events.collect { vm.load() } }
     LazyColumn(contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item { Text(stringResource(R.string.dash_title), style = MaterialTheme.typography.headlineMedium) }
         val l = s.listing
+        item {
+            val online = l?.status == "APPROVED" && l.available
+            HeroHeader(stringResource(R.string.dash_title), stringResource(R.string.dash_hero_sub, s.incoming.count { it.status == "REQUESTED" }),
+                live = online, liveLabel = stringResource(if (online) R.string.dash_online else R.string.dash_offline))
+        }
         when {
             l == null && s.error != null -> item { ErrorState(s.error!!) { vm.load() } }
             l == null -> item { LoadingState() }
@@ -105,6 +109,7 @@ fun HostDashboard(openRequest: (String) -> Unit, openListing: () -> Unit, openHi
                             Text(r.customerName ?: "", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
                             StatusPill(RequestText.status(r.status), RequestText.tone(r.status))
                         }
+                        if (r.urgent && r.batteryPercent != null) StatusPill(stringResource(R.string.battery_urgent, r.batteryPercent), Tone.Bad)
                         Text("${Labels.vehicle(r.vehicleType)} · ${Labels.connector(r.connector)}" + (r.straightLineKm?.let { " · ${Labels.km(it)}" } ?: ""), style = MaterialTheme.typography.bodyMedium)
                         Text(Time.ago(r.createdAt), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }

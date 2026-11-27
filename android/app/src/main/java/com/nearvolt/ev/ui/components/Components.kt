@@ -13,6 +13,11 @@ import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.Inbox
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.draw.scale
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -28,7 +33,9 @@ import com.nearvolt.ev.data.api.ApiResult
 
 @Composable
 fun PrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, loading: Boolean = false, danger: Boolean = false) {
-    Button(onClick = onClick, enabled = enabled && !loading, modifier = modifier.fillMaxWidth().heightIn(min = 54.dp),
+    val src = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    Button(onClick = hapticClick(onClick), enabled = enabled && !loading, interactionSource = src,
+        modifier = modifier.fillMaxWidth().heightIn(min = 54.dp).scale(rememberPressScale(src)),
         shape = RoundedCornerShape(16.dp),
         colors = if (danger) ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error, contentColor = MaterialTheme.colorScheme.onError) else ButtonDefaults.buttonColors()) {
         if (loading) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary) else Text(text, style = MaterialTheme.typography.labelLarge)
@@ -50,8 +57,9 @@ fun SectionTitle(text: String, modifier: Modifier = Modifier) =
 @Composable
 fun NvCard(modifier: Modifier = Modifier, onClick: (() -> Unit)? = null, content: @Composable ColumnScope.() -> Unit) {
     val colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
-    if (onClick != null) Card(onClick = onClick, modifier = modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large, colors = colors) { Column(Modifier.padding(18.dp), content = content) }
-    else Card(modifier = modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large, colors = colors) { Column(Modifier.padding(18.dp), content = content) }
+    val edge = BorderStroke(1.dp, Brush.linearGradient(listOf(MaterialTheme.colorScheme.primary.copy(alpha = 0.22f), MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f), Color.Transparent)))
+    if (onClick != null) Card(onClick = onClick, modifier = modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large, colors = colors, border = edge) { Column(Modifier.padding(18.dp), content = content) }
+    else Card(modifier = modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large, colors = colors, border = edge) { Column(Modifier.padding(18.dp), content = content) }
 }
 
 @Composable
@@ -69,7 +77,11 @@ enum class Tone { Good, Warn, Bad, Neutral }
 @Composable
 fun CenterState(icon: ImageVector, title: String, body: String, action: String? = null, onAction: (() -> Unit)? = null) {
     Column(Modifier.fillMaxWidth().padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Icon(icon, null, Modifier.size(44.dp), tint = MaterialTheme.colorScheme.primary)
+        Box(Modifier.size(84.dp).background(Brush.radialGradient(listOf(MaterialTheme.colorScheme.primary.copy(alpha = 0.22f), Color.Transparent)), CircleShape), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(56.dp).background(MaterialTheme.colorScheme.primaryContainer, CircleShape), contentAlignment = Alignment.Center) {
+                Icon(icon, null, Modifier.size(28.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
+            }
+        }
         Spacer(Modifier.height(12.dp))
         Text(title, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
         Spacer(Modifier.height(6.dp))
@@ -87,7 +99,7 @@ fun ErrorState(err: ApiResult.Err, onRetry: () -> Unit) = CenterState(
 fun EmptyState(title: String, body: String, action: String? = null, onAction: (() -> Unit)? = null) = CenterState(Icons.Outlined.Inbox, title, body, action, onAction)
 
 @Composable
-fun LoadingState(modifier: Modifier = Modifier) = Box(modifier.fillMaxWidth().padding(48.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+fun LoadingState(modifier: Modifier = Modifier) = SkeletonList(3, modifier.padding(20.dp))
 
 @Composable
 fun InlineMessage(text: String?, isError: Boolean = true) {

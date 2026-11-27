@@ -26,7 +26,8 @@ class NearVoltRepository(private val api: ApiService = ApiClient.service) {
     suspend fun createRequest(body: CreateRequestBody, key: String = UUID.randomUUID().toString()) = call(retries = 2) { api.createRequest(key, body) }
     suspend fun requests(asRole: String, activeOnly: Boolean = false, cursor: String? = null) = call(retries = 1) { api.requests(asRole, if (activeOnly) "active" else null, cursor) }
     suspend fun request(id: String) = call(retries = 1) { api.request(id) }
-    suspend fun transition(id: String, action: String, reason: String? = null) = call { api.transition(id, TransitionBody(action, reason)) }
+    suspend fun transition(id: String, action: String, reason: String? = null, pin: String? = null) = call { api.transition(id, TransitionBody(action, reason, pin)) }
+    suspend fun reissuePin(id: String) = call { api.reissuePin(id) }
     suspend fun feedback(id: String, rating: Int, comment: String?) = call { api.feedback(id, FeedbackBody(rating, comment)) }
 
     suspend fun myListing() = call(retries = 1) { api.myListing() }

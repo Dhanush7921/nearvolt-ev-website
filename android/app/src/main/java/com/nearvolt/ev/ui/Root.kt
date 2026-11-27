@@ -40,7 +40,7 @@ fun NearVoltRoot(vm: AppViewModel) {
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             AnimatedContent(s.phase, transitionSpec = { fadeIn() togetherWith fadeOut() }, label = "phase") { phase ->
                 when (phase) {
-                    Phase.Loading -> Box(Modifier.fillMaxSize())
+                    Phase.Loading -> com.nearvolt.ev.ui.screens.SplashScreen()
                     Phase.NotConfigured -> Gate(stringResource(R.string.gate_config_title), stringResource(R.string.gate_config_body), null, null)
                     Phase.UpdateRequired -> UpdateGate()
                     Phase.Maintenance -> Gate(stringResource(R.string.gate_maintenance_title), s.config?.maintenance?.message?.ifBlank { null } ?: stringResource(R.string.gate_maintenance_body), stringResource(R.string.action_retry)) { vm.refresh() }

@@ -49,12 +49,15 @@ import kotlinx.serialization.Serializable
     val vehicleType: String = "", val note: String? = null, val straightLineKm: Double? = null, val createdAt: String? = null,
     val expiresAt: String? = null, val updatedAt: String? = null, val history: List<HistoryEvent> = emptyList(),
     val feedbackGiven: Boolean = false, val hostLocation: HostLocation? = null, val customerName: String? = null,
+    val batteryPercent: Int? = null, val urgent: Boolean = false,
+    /** Session verification PIN: [pin] is only ever sent to the customer; the host sees [pinStatus]. */
+    val pin: String? = null, val pinStatus: String? = null, val pinExpiresAt: String? = null,
 )
 @Serializable data class CreateRequestBody(
     val hostId: String, val vehicleType: String, val connector: String, val customerLocation: LatLng,
-    val compatibilityConfirmed: Boolean = true, val note: String? = null,
+    val compatibilityConfirmed: Boolean = true, val note: String? = null, val batteryPercent: Int? = null,
 )
-@Serializable data class TransitionBody(val action: String, val reason: String? = null)
+@Serializable data class TransitionBody(val action: String, val reason: String? = null, val pin: String? = null)
 @Serializable data class FeedbackBody(val rating: Int, val comment: String? = null)
 
 @Serializable data class HoursSlot(val open: String, val close: String)

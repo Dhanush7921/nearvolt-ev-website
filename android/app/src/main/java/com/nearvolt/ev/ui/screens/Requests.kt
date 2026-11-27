@@ -56,10 +56,15 @@ class RequestViewModel : ViewModel() {
     fun load(id: String) = viewModelScope.launch {
         when (val r = repo.request(id)) { is ApiResult.Ok -> state.update { it.copy(req = r.value, error = null) }; is ApiResult.Err -> state.update { it.copy(error = r) } }
     }
-    fun act(action: String, reason: String? = null) = viewModelScope.launch {
+    fun refreshPin() = viewModelScope.launch {
+        val id = state.value.req?.id ?: return@launch
+        state.update { it.copy(busy = "pin", actionError = null) }
+        when (val r = repo.reissuePin(id)) { is ApiResult.Ok -> state.update { it.copy(req = r.value, busy = null) }; is ApiResult.Err -> state.update { it.copy(busy = null, actionError = r.message) } }
+    }
+    fun act(action: String, reason: String? = null, pin: String? = null) = viewModelScope.launch {
         val id = state.value.req?.id ?: return@launch
         state.update { it.copy(busy = action, actionError = null) }
-        when (val r = repo.transition(id, action, reason)) {
+        when (val r = repo.transition(id, action, reason, pin)) {
             is ApiResult.Ok -> state.update { it.copy(req = r.value, busy = null) }
             is ApiResult.Err -> { state.update { it.copy(busy = null, actionError = r.message) }; load(id) }
         }
@@ -85,6 +90,7 @@ fun RequestScreen(id: String, onBack: () -> Unit, findAlternatives: (String) -> 
         }
     }
     var confirm by remember { mutableStateOf<String?>(null) }
+    var pinEntry by remember { mutableStateOf(false) }
     Scaffold(topBar = { TopAppBar(title = { Text(stringResource(R.string.request_title)) }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.action_back)) } }) }) { pad ->
         val r = s.req
         when {
@@ -99,6 +105,7 @@ fun RequestScreen(id: String, onBack: () -> Unit, findAlternatives: (String) -> 
                     }
                     Spacer(Modifier.height(6.dp))
                     Text("${Labels.vehicle(r.vehicleType)} · ${Labels.connector(r.connector)}" + (r.straightLineKm?.let { " · ${Labels.km(it)} straight-line" } ?: ""), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    r.batteryPercent?.let { b -> Spacer(Modifier.height(6.dp)); StatusPill(if (r.urgent) stringResource(R.string.battery_urgent, b) else stringResource(R.string.battery_label, b), if (r.urgent) Tone.Bad else Tone.Neutral) }
                     r.note?.let { Spacer(Modifier.height(6.dp)); Text("“$it”", style = MaterialTheme.typography.bodyMedium) }
                     if (r.status == "REQUESTED") {
                         var left by remember(r.expiresAt) { mutableLongStateOf(Time.secondsUntil(r.expiresAt)) }
@@ -116,8 +123,10 @@ fun RequestScreen(id: String, onBack: () -> Unit, findAlternatives: (String) -> 
                         PrimaryButton(stringResource(R.string.request_navigate), { Links.navigate(ctx, loc.mapsUrl) })
                     }
                 }
+                if (isCustomer && r.pinStatus != null) SessionPinCard(r, refreshing = s.busy == "pin") { vm.refreshPin() }
+                if (r.status == "CHARGING") ChargingProgress(r)
                 InlineMessage(s.actionError)
-                Actions(r, s.busy, onAct = { a -> if (a in setOf("cancel", "reject", "dispute")) confirm = a else vm.act(a) }, findAlternatives = { findAlternatives(r.hostId) })
+                Actions(r, s.busy, onAct = { a -> when (a) { "cancel", "reject", "dispute" -> confirm = a; "start" -> pinEntry = true; else -> vm.act(a) } }, findAlternatives = { findAlternatives(r.hostId) })
                 if (r.status == "COMPLETED" && !r.feedbackGiven) RateCard(busy = s.busy == "rate") { st, c -> vm.rate(st, c) }
                 Timeline(r)
                 if (r.status in RequestText.ACTIVE) SafetyCard()
@@ -127,6 +136,19 @@ fun RequestScreen(id: String, onBack: () -> Unit, findAlternatives: (String) -> 
                 }
             }
         }
+    }
+    if (pinEntry) {
+        var pin by remember { mutableStateOf("") }
+        AlertDialog(onDismissRequest = { pinEntry = false }, title = { Text(stringResource(R.string.pin_enter_title)) },
+            text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(stringResource(R.string.pin_enter_body), style = MaterialTheme.typography.bodyMedium)
+                OutlinedTextField(pin, { v -> pin = v.filter(Char::isDigit).take(4) }, singleLine = true, label = { Text(stringResource(R.string.pin_label)) },
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.NumberPassword),
+                    textStyle = MaterialTheme.typography.headlineMedium)
+                if (s.req?.pinStatus == "LOCKED" || s.req?.pinStatus == "EXPIRED") InlineMessage(stringResource(R.string.pin_ask_refresh))
+            } },
+            confirmButton = { TextButton(onClick = { vm.act("start", pin = pin); pinEntry = false }, enabled = pin.length == 4) { Text(stringResource(R.string.action_start_charging)) } },
+            dismissButton = { TextButton(onClick = { pinEntry = false }) { Text(stringResource(R.string.action_back)) } })
     }
     confirm?.let { a ->
         var reason by remember { mutableStateOf("") }
@@ -234,5 +256,42 @@ fun HistoryScreen(asRole: String, open: (String) -> Unit, onBack: (() -> Unit)? 
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun SessionPinCard(r: ChargeRequest, refreshing: Boolean, onRefresh: () -> Unit) {
+    NvCard {
+        Text(stringResource(R.string.pin_title), style = MaterialTheme.typography.titleSmall)
+        Spacer(Modifier.height(6.dp))
+        when (r.pinStatus) {
+            "ACTIVE" -> {
+                Text(r.pin.orEmpty().toCharArray().joinToString("  "), style = MaterialTheme.typography.displaySmall, color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.semantics { contentDescription = "PIN " + r.pin.orEmpty().toCharArray().joinToString(" ") })
+                Text(stringResource(R.string.pin_share_body), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            "LOCKED" -> InlineMessage(stringResource(R.string.pin_locked))
+            else -> InlineMessage(stringResource(R.string.pin_expired))
+        }
+        TextButton(onClick = onRefresh, enabled = !refreshing) { Text(stringResource(R.string.pin_refresh)) }
+    }
+}
+
+/** Elapsed-time view while charging. NEARVOLT EV has no metering hardware, so no energy (kWh) figure is shown. */
+@Composable
+private fun ChargingProgress(r: ChargeRequest) {
+    val startedAt = r.history.lastOrNull { it.to == "CHARGING" }?.at
+    var elapsed by remember(startedAt) { mutableLongStateOf(-Time.secondsUntil(startedAt)) }
+    LaunchedEffect(startedAt) { while (true) { elapsed = -Time.secondsUntil(startedAt); delay(1000) } }
+    NvCard {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Outlined.ElectricBolt, null, tint = MaterialTheme.colorScheme.primary)
+            Spacer(Modifier.width(8.dp))
+            Text(stringResource(R.string.charging_in_progress), style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+            if (elapsed >= 0) Text("%d:%02d:%02d".format(elapsed / 3600, elapsed / 60 % 60, elapsed % 60), style = MaterialTheme.typography.titleMedium)
+        }
+        Spacer(Modifier.height(10.dp))
+        com.nearvolt.ev.ui.components.EnergyFlowBar(Modifier.fillMaxWidth())
+        Text(stringResource(R.string.charging_no_metering), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

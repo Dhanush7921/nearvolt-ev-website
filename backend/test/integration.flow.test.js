@@ -90,7 +90,7 @@ test('compatibility filtering and service area', async () => {
 
 test('full emergency workflow with location privacy, idempotency and feedback', async () => {
   const th = await approvedHost('host1');
-  const body = { hostId: 'host1', vehicleType: 'car', connector: 'TYPE2_AC', customerLocation: NEAR, compatibilityConfirmed: true };
+  const body = { hostId: 'host1', vehicleType: 'car', connector: 'TYPE2_AC', customerLocation: NEAR, compatibilityConfirmed: true, batteryPercent: 8 };
   await request(app).post('/api/v1/requests').set(bearer(T.c1)).send(body).expect(400); // missing idempotency key
   const key = idem();
   const r1 = await request(app).post('/api/v1/requests').set(bearer(T.c1)).set(key).send(body).expect(201);
@@ -99,7 +99,8 @@ test('full emergency workflow with location privacy, idempotency and feedback', 
   await request(app).post('/api/v1/requests').set(bearer(T.c1)).set(idem()).send(body).expect(409); // one active request
   const id = r1.body.data.id;
   assert.equal(r1.body.data.hostLocation, undefined); // hidden before acceptance
-  assert.ok(notifications.some((n) => n.uid === 'host1' && n.type === 'request.new'));
+  assert.equal(r1.body.data.batteryPercent, 8); assert.equal(r1.body.data.urgent, true);
+  assert.ok(notifications.some((n) => n.uid === 'host1' && n.type === 'request.new' && n.body.includes('battery 8%, urgent')));
   assert.ok(!JSON.stringify(notifications).includes('MVP Colony')); // no address in push
 
   // IDOR: another customer cannot see or act on it.
@@ -116,7 +117,26 @@ test('full emergency workflow with location privacy, idempotency and feedback', 
   assert.match(cv.body.data.hostLocation.mapsUrl, /^https:\/\/www\.google\.com\/maps\/dir\/\?api=1&destination=17\.723100,83\.301300$/);
   await request(app).post(`/api/v1/requests/${id}/transition`).set(bearer(th)).send({ action: 'start' }).expect(409); // must arrive first
   await request(app).post(`/api/v1/requests/${id}/transition`).set(bearer(T.c1)).send({ action: 'arrive' }).expect(200);
-  await request(app).post(`/api/v1/requests/${id}/transition`).set(bearer(th)).send({ action: 'start' }).expect(200);
+  // Session verification PIN: customer sees it, host never does; wrong PINs are counted and locked out.
+  assert.match(cv.body.data.pin, /^\d{4}$/);
+  assert.equal(cv.body.data.pinStatus, 'ACTIVE');
+  const hv = await request(app).get(`/api/v1/requests/${id}`).set(bearer(th)).expect(200);
+  assert.equal(hv.body.data.pin, undefined);
+  assert.equal(hv.body.data.pinStatus, 'ACTIVE');
+  const pin = cv.body.data.pin, wrong = pin === '0000' ? '1111' : '0000';
+  let e = await request(app).post(`/api/v1/requests/${id}/transition`).set(bearer(th)).send({ action: 'start' }).expect(400);
+  assert.equal(e.body.error.code, 'PIN_REQUIRED');
+  for (let i = 0; i < 5; i++) {
+    e = await request(app).post(`/api/v1/requests/${id}/transition`).set(bearer(th)).send({ action: 'start', pin: wrong });
+    assert.equal(e.status, 400); assert.equal(e.body.error.code, 'PIN_INVALID');
+  }
+  e = await request(app).post(`/api/v1/requests/${id}/transition`).set(bearer(th)).send({ action: 'start', pin }).expect(409);
+  assert.equal(e.body.error.code, 'PIN_LOCKED'); // even the right PIN is refused once locked
+  await request(app).post(`/api/v1/requests/${id}/pin`).set(bearer(th)).expect(404); // host cannot re-issue
+  const re = await request(app).post(`/api/v1/requests/${id}/pin`).set(bearer(T.c1)).expect(200);
+  assert.equal(re.body.data.pinStatus, 'ACTIVE');
+  const started = await request(app).post(`/api/v1/requests/${id}/transition`).set(bearer(th)).send({ action: 'start', pin: re.body.data.pin }).expect(200);
+  assert.equal(started.body.data.pin, undefined); assert.equal(started.body.data.pinStatus, undefined); // PIN cleared after use
   await request(app).post(`/api/v1/requests/${id}/feedback`).set(bearer(T.c1)).send({ rating: 5 }).expect(409); // not completed yet
   const done = await request(app).post(`/api/v1/requests/${id}/transition`).set(bearer(T.c1)).send({ action: 'complete' }).expect(200);
   assert.equal(done.body.data.status, 'COMPLETED');

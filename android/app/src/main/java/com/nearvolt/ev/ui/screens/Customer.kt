@@ -84,12 +84,12 @@ class FindViewModel : ViewModel() {
             is ApiResult.Err -> state.update { it.copy(loading = false, error = r) }
         }
     }
-    fun create(host: HostSummary, note: String?, onCreated: (String) -> Unit) = viewModelScope.launch {
+    fun create(host: HostSummary, note: String?, battery: Int?, onCreated: (String) -> Unit) = viewModelScope.launch {
         val s = state.value
         val fix = s.fix ?: return@launch
         val key = createKey ?: UUID.randomUUID().toString().also { createKey = it }
         state.update { it.copy(creating = true, createError = null) }
-        val body = CreateRequestBody(host.hostId, s.vehicleType ?: host.vehicleTypes.first(), s.connector ?: host.connectors.first(), fix.point, true, note?.ifBlank { null })
+        val body = CreateRequestBody(host.hostId, s.vehicleType ?: host.vehicleTypes.first(), s.connector ?: host.connectors.first(), fix.point, true, note?.ifBlank { null }, battery)
         when (val r = c.repo.createRequest(body, key)) {
             is ApiResult.Ok -> { createKey = null; state.update { it.copy(creating = false, active = r.value) }; onCreated(r.value.id) }
             is ApiResult.Err -> { if (r.code != "OFFLINE") createKey = null; state.update { it.copy(creating = false, createError = r.message) }; if (r.code == "HOST_UNAVAILABLE") search() }
@@ -115,11 +115,7 @@ fun FindScreen(app: AppViewModel, exclude: String?, openRequest: (String) -> Uni
 
     PullToRefreshBox(isRefreshing = s.loading, onRefresh = { vm.search(); vm.loadActive() }, modifier = Modifier.fillMaxSize()) {
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            item {
-                Text(stringResource(R.string.find_title), style = MaterialTheme.typography.headlineMedium)
-                Spacer(Modifier.height(4.dp))
-                Text(stringResource(R.string.find_subtitle), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
+            item { HeroHeader(stringResource(R.string.find_title), stringResource(R.string.find_subtitle)) }
             s.active?.let { a -> item {
                 NvCard(onClick = { openRequest(a.id) }) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -154,11 +150,18 @@ fun FindScreen(app: AppViewModel, exclude: String?, openRequest: (String) -> Uni
                     }
                 }
             }
+            item {
+                val nearest = s.result?.items?.firstOrNull { it.bookableNow }
+                com.nearvolt.ev.ui.components.EmergencyButton(
+                    label = stringResource(if (s.fix == null) R.string.emergency_find_nearest else if (nearest != null) R.string.emergency_nearest_found else R.string.emergency_none),
+                    enabled = s.fix == null || nearest != null, loading = s.locating || s.loading,
+                ) { if (s.fix == null) askLocation() else nearest?.let { selected = it } }
+            }
             if (s.fix != null) item { Filters(s, vm) }
             when {
                 s.fix == null -> item { EmptyState(stringResource(R.string.find_start_title), stringResource(R.string.find_start_body)) }
                 s.error != null -> item { ErrorState(s.error!!) { vm.search() } }
-                s.loading && s.result == null -> item { LoadingState() }
+                s.loading && s.result == null -> item { SkeletonList(3) }
                 s.result != null && s.result!!.items.isEmpty() && s.locationIssue != "OUTSIDE" -> item { EmptyState(stringResource(R.string.find_empty_title), stringResource(R.string.find_empty_body)) }
                 else -> {
                     s.result?.let { r ->
@@ -179,7 +182,7 @@ fun FindScreen(app: AppViewModel, exclude: String?, openRequest: (String) -> Uni
     if (manualOpen) ManualLocationDialog(onDismiss = { manualOpen = false }) { manualOpen = false; vm.manual(it) }
     selected?.let { h ->
         ModalBottomSheet(onDismissRequest = { selected = null; vm.clearCreateError() }) {
-            HostDetail(h, s, onRequest = { note -> vm.create(h, note) { id -> selected = null; openRequest(id) } })
+            HostDetail(h, s, onRequest = { note, battery -> vm.create(h, note, battery) { id -> selected = null; openRequest(id) } })
         }
     }
 }
@@ -211,8 +214,10 @@ private fun HostCard(h: HostSummary, onClick: () -> Unit) {
 }
 
 @Composable
-private fun HostDetail(h: HostSummary, s: FindState, onRequest: (String?) -> Unit) {
+private fun HostDetail(h: HostSummary, s: FindState, onRequest: (String?, Int?) -> Unit) {
     var confirmed by remember { mutableStateOf(false) }
+    var battery by remember { mutableFloatStateOf(20f) }
+    var batteryConfirmed by remember { mutableStateOf(false) }
     var note by remember { mutableStateOf("") }
     val connector = s.connector ?: h.connectors.firstOrNull().orEmpty()
     val compatible = (s.connector == null || h.connectors.contains(s.connector)) && (s.vehicleType == null || h.vehicleTypes.contains(s.vehicleType))
@@ -227,9 +232,13 @@ private fun HostDetail(h: HostSummary, s: FindState, onRequest: (String?) -> Uni
         else if (!compatible) InlineMessage(stringResource(R.string.detail_incompatible))
         else {
             OutlinedTextField(note, { note = it.take(300) }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.field_note_optional)) }, maxLines = 3)
+            Text(stringResource(R.string.battery_question, battery.toInt()), style = MaterialTheme.typography.titleSmall)
+            Slider(battery, { battery = it; batteryConfirmed = false }, valueRange = 0f..100f, steps = 19,
+                modifier = Modifier.semantics { contentDescription = "Remaining battery ${battery.toInt()} percent" })
+            CheckRow(batteryConfirmed, { batteryConfirmed = it }, stringResource(R.string.battery_confirm, battery.toInt()))
             CheckRow(confirmed, { confirmed = it }, stringResource(R.string.detail_confirm_compat, Labels.connector(connector), Labels.kw(h.powerKw)))
             InlineMessage(s.createError)
-            PrimaryButton(stringResource(R.string.detail_request), { onRequest(note) }, enabled = confirmed, loading = s.creating)
+            PrimaryButton(stringResource(R.string.detail_request), { onRequest(note, battery.toInt()) }, enabled = confirmed && batteryConfirmed, loading = s.creating)
         }
     }
 }

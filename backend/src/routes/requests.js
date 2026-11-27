@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { validate } from '../middleware/validate.js';
 import { ok } from '../middleware/errors.js';
-import { bad, conflict, forbidden, notFound } from '../lib/errors.js';
+import { bad, conflict, forbidden, notFound, ApiError } from '../lib/errors.js';
 import { createRequestSchema, transitionSchema, feedbackSchema, listQuery } from '../lib/schemas.js';
 import { S, ACTIVE, HOLDS_CAPACITY, LOCATION_VISIBLE, checkTransition } from '../services/stateMachine.js';
 import { isHostBookable } from './hosts.js';
@@ -11,6 +11,13 @@ import { distanceKm, roundKm, mapsDirectionsUrl, inServiceArea } from '../lib/ge
 import { paginate, ts } from '../lib/paginate.js';
 import { hitLimit } from '../lib/limiter.js';
 import { keyedMutex } from '../lib/keyedMutex.js';
+import { randomInt, timingSafeEqual } from 'node:crypto';
+
+// Session verification PIN: issued to the customer when the host accepts; the host must enter it to start charging.
+export const PIN_TTL_MS = 2 * 3600e3, PIN_MAX_ATTEMPTS = 5, PIN_MAX_REISSUES = 3;
+const PIN_STATES = new Set([S.ACCEPTED, S.ARRIVED]);
+const newPin = () => ({ code: String(randomInt(0, 10000)).padStart(4, '0'), expiresAt: Timestamp.fromMillis(Date.now() + PIN_TTL_MS), attempts: 0 });
+const pinEq = (a, b) => a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b));
 
 const hostLock = keyedMutex();
 
@@ -68,6 +75,8 @@ async function runTx(db, reqRef, requestId, action, actor, reason) {
     }
     const event = { from: q.status, to: chk.to, by: role, uid: actor === 'system' ? null : actor.uid, reason: reason || null, at: Timestamp.now() };
     const patch = { status: chk.to, updatedAt: FieldValue.serverTimestamp(), history: FieldValue.arrayUnion(event), [`timestamps.${chk.to.toLowerCase()}`]: FieldValue.serverTimestamp() };
+    if (chk.to === S.ACCEPTED) patch.pin = newPin();
+    if (!PIN_STATES.has(chk.to)) patch.pin = FieldValue.delete();
     tx.update(reqRef, patch);
     if (!ACTIVE.has(chk.to) && cs.exists && cs.data().activeRequestId === requestId) {
       tx.update(custRef, { activeRequestId: FieldValue.delete() });
@@ -95,6 +104,13 @@ export function requestRoutes({ db, config, settings, notify }) {
       out.hostLocation = { lat: hostDoc.location.lat, lng: hostDoc.location.lng, address: hostDoc.address, mapsUrl: mapsDirectionsUrl(hostDoc.location.lat, hostDoc.location.lng) };
     }
     if (!isCustomer) out.customerName = q.customerName || 'Customer';
+    out.batteryPercent = q.batteryPercent ?? null; out.urgent = q.batteryPercent != null && q.batteryPercent <= 10;
+    if (PIN_STATES.has(q.status) && q.pin) {
+      const expired = q.pin.expiresAt.toMillis() <= Date.now(), locked = q.pin.attempts >= PIN_MAX_ATTEMPTS;
+      out.pinStatus = expired ? 'EXPIRED' : locked ? 'LOCKED' : 'ACTIVE';
+      out.pinExpiresAt = ts(q.pin.expiresAt);
+      if (isCustomer && out.pinStatus === 'ACTIVE') out.pin = q.pin.code; // never shown to the host
+    }
     return out;
   };
 
@@ -103,7 +119,7 @@ export function requestRoutes({ db, config, settings, notify }) {
       const key = req.get('Idempotency-Key');
       if (!key || !/^[A-Za-z0-9-]{16,64}$/.test(key)) throw bad('Idempotency-Key header (16–64 chars) is required.');
       await hitLimit(db, `reqcreate_${req.user.uid}`, 10, 3600);
-      const { hostId, vehicleType, connector, customerLocation, note } = req.body;
+      const { hostId, vehicleType, connector, customerLocation, note, batteryPercent } = req.body;
       if (hostId === req.user.uid) throw bad('You cannot request your own charging point.');
       const s = await settings.get();
       if (!inServiceArea(customerLocation, s.serviceAreas || [])) throw bad('NEARVOLT EV is not available in this area yet.');
@@ -131,6 +147,7 @@ export function requestRoutes({ db, config, settings, notify }) {
         if (!h.equipment.connectors.includes(connector) || !h.equipment.vehicleTypes.includes(vehicleType)) throw conflict('This host does not support your vehicle or connector.', 'INCOMPATIBLE');
         const now = Timestamp.now();
         const doc = { customerUid: req.user.uid, customerName: u.name, hostUid: hostId, hostName: h.displayName, vehicleType, connector, note: note || null,
+          ...(batteryPercent != null ? { batteryPercent } : {}),
           customerLocation, straightLineKm: roundKm(distanceKm(customerLocation, h.location)), status: S.REQUESTED, compatibilityConfirmed: true,
           createdAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp(),
           expiresAt: Timestamp.fromMillis(now.toMillis() + config.REQUEST_TTL_SECONDS * 1000),
@@ -142,7 +159,7 @@ export function requestRoutes({ db, config, settings, notify }) {
         return { replay: false, id: reqRef.id, doc };
       });
       const snap = await col.doc(result.id).get();
-      if (!result.replay) notify(snap.data().hostUid, { type: 'request.new', title: 'New charging request', body: `${snap.data().vehicleType === 'car' ? 'An EV car' : 'An EV'} driver needs charging nearby. Respond soon.`, requestId: result.id });
+      if (!result.replay) notify(snap.data().hostUid, { type: 'request.new', title: 'New charging request', body: `${snap.data().vehicleType === 'car' ? 'An EV car' : 'An EV'} driver needs charging nearby${snap.data().batteryPercent != null ? ` (battery ${snap.data().batteryPercent}%${snap.data().batteryPercent <= 10 ? ', urgent' : ''})` : ''}. Respond soon.`, requestId: result.id });
       ok(res, view(result.id, snap.data(), req.user.uid), result.replay ? 200 : 201);
     } catch (e) { next(e); }
   });
@@ -174,6 +191,7 @@ export function requestRoutes({ db, config, settings, notify }) {
 
   r.post('/:id/transition', validate(transitionSchema), async (req, res, next) => {
     try {
+      if (req.body.action === 'start') await verifyPin(req.params.id, req.user.uid, req.body.pin);
       const t = await applyTransition(db, req.params.id, req.body.action, req.user, req.body.reason);
       const q = t.request;
       const other = t.role === 'customer' ? q.hostUid : q.customerUid;
@@ -182,6 +200,42 @@ export function requestRoutes({ db, config, settings, notify }) {
       const fresh = await col.doc(req.params.id).get();
       const host = req.user.uid === q.customerUid && LOCATION_VISIBLE.has(t.to) ? (await db.collection('hosts').doc(q.hostUid).get()).data() : null;
       ok(res, view(fresh.id, fresh.data(), req.user.uid, host));
+    } catch (e) { next(e); }
+  });
+
+  async function verifyPin(id, uid, pin) {
+    const ref = col.doc(id);
+    const res = await db.runTransaction(async (tx) => {
+      const s = await tx.get(ref);
+      if (!s.exists) throw notFound('Request not found.');
+      const q = s.data();
+      if (uid !== q.hostUid) return 'SKIP'; // role/state errors are reported by the state machine
+      if (q.status !== S.ARRIVED || !q.pin) return 'SKIP';
+      if (!pin) throw new ApiError(400, 'PIN_REQUIRED', 'Enter the 4-digit PIN shown on the driver\'s phone.');
+      if (q.pin.expiresAt.toMillis() <= Date.now()) throw conflict('This PIN has expired. Ask the driver to refresh it in their app.', 'PIN_EXPIRED');
+      if (q.pin.attempts >= PIN_MAX_ATTEMPTS) throw conflict('Too many wrong PINs. Ask the driver to refresh the PIN in their app.', 'PIN_LOCKED');
+      if (pinEq(pin, q.pin.code)) return 'OK';
+      tx.update(ref, { 'pin.attempts': FieldValue.increment(1) });
+      return PIN_MAX_ATTEMPTS - q.pin.attempts - 1;
+    });
+    if (typeof res === 'number') throw new ApiError(400, 'PIN_INVALID', res > 0 ? `Incorrect PIN. ${res} attempt${res === 1 ? '' : 's'} left.` : 'Incorrect PIN. The PIN is now locked; ask the driver to refresh it.');
+  }
+
+  // Customer re-issues the PIN (after expiry, lock-out, or if it was seen by someone else). Limited per request.
+  r.post('/:id/pin', async (req, res, next) => {
+    try {
+      const ref = col.doc(req.params.id);
+      await db.runTransaction(async (tx) => {
+        const s = await tx.get(ref);
+        if (!s.exists) throw notFound('Request not found.');
+        const q = s.data();
+        if (req.user.uid !== q.customerUid) throw notFound('Request not found.');
+        if (!PIN_STATES.has(q.status)) throw conflict('A PIN is only available after the host accepts.', 'INVALID_STATE');
+        if ((q.pinReissues || 0) >= PIN_MAX_REISSUES) throw conflict('PIN refresh limit reached. Contact support if you need help.', 'PIN_REISSUE_LIMIT');
+        tx.update(ref, { pin: newPin(), pinReissues: FieldValue.increment(1), updatedAt: FieldValue.serverTimestamp() });
+      });
+      const fresh = await ref.get();
+      ok(res, view(fresh.id, fresh.data(), req.user.uid));
     } catch (e) { next(e); }
   });
 

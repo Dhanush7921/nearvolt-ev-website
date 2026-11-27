@@ -1,6 +1,9 @@
 package com.nearvolt.ev.ui.screens
 
 import androidx.compose.foundation.layout.padding
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -41,11 +44,20 @@ fun MainScreen(vm: AppViewModel) {
             tabs.forEach { t ->
                 NavigationBarItem(selected = current == t.route, onClick = {
                     nav.navigate(t.route) { popUpTo(nav.graph.findStartDestination().id) { saveState = true }; launchSingleTop = true; restoreState = true }
-                }, icon = { Icon(t.icon, null) }, label = { Text(stringResource(t.label)) })
+                }, icon = {
+                    val sel = current == t.route
+                    val s by animateFloatAsState(if (sel) 1.12f else 1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy), label = "tab")
+                    Icon(t.icon, null, Modifier.graphicsLayer { scaleX = s; scaleY = s })
+                }, label = { Text(stringResource(t.label)) })
             }
         }
     }) { pad ->
-        NavHost(nav, startDestination = tabs.first().route, modifier = Modifier.padding(pad)) {
+        val reduced = com.nearvolt.ev.ui.components.rememberReducedMotion()
+        NavHost(nav, startDestination = tabs.first().route, modifier = Modifier.padding(pad),
+            enterTransition = { if (reduced) EnterTransition.None else fadeIn(tween(220)) + slideInHorizontally(tween(260)) { it / 12 } },
+            exitTransition = { if (reduced) ExitTransition.None else fadeOut(tween(160)) },
+            popEnterTransition = { if (reduced) EnterTransition.None else fadeIn(tween(220)) + slideInHorizontally(tween(260)) { -it / 12 } },
+            popExitTransition = { if (reduced) ExitTransition.None else fadeOut(tween(160)) }) {
             composable("find?exclude={exclude}", arguments = listOf(navArgument("exclude") { type = NavType.StringType; nullable = true; defaultValue = null })) { e ->
                 FindScreen(vm, exclude = e.arguments?.getString("exclude"), openRequest = { nav.navigate("request/$it") })
             }
