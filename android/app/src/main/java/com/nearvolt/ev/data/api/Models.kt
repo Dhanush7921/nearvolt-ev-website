@@ -33,7 +33,10 @@ import kotlinx.serialization.Serializable
     val hostId: String, val displayName: String, val straightLineKm: Double, val connectors: List<String> = emptyList(),
     val vehicleTypes: List<String> = emptyList(), val powerKw: Double = 0.0, val chargerType: String = "", val phase: String = "",
     val bookableNow: Boolean = false, val openNow: Boolean = false, val rating: Rating? = null, val availabilityUpdatedAt: String? = null,
+    val approxArea: ApproxArea? = null,
 )
+/** ~1 km grid cell containing the host. Exact coordinates are only shared after a host accepts. */
+@Serializable data class ApproxArea(val lat: Double, val lng: Double, val radiusM: Int = 800)
 @Serializable data class NearbyResponse(
     val serviceArea: AreaRef? = null, val items: List<HostSummary> = emptyList(), val message: String? = null,
     val distanceNote: String? = null, val checkedAt: String? = null,

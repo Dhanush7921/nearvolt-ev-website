@@ -23,6 +23,10 @@ object Brand {
     val Forest = Color(0xFF051F20); val Pine = Color(0xFF0B2B26); val Spruce = Color(0xFF163832)
     val Moss = Color(0xFF235347); val Sage = Color(0xFF8EB69B); val Mint = Color(0xFFDAF1DE)
     val Danger = Color(0xFFB3261E); val Warning = Color(0xFF8A5A00)
+    // V1.1 premium palette: deep forest, emerald, neon mint, pearl white, charcoal.
+    val Emerald = Color(0xFF047857); val EmeraldBright = Color(0xFF34D399); val NeonMint = Color(0xFF7CFFC4)
+    val Pearl = Color(0xFFF7FAF8); val Charcoal = Color(0xFF1C2321)
+    val energyGlow = Brush.radialGradient(listOf(NeonMint.copy(alpha = 0.35f), Color.Transparent))
     val heroGradient = Brush.linearGradient(listOf(Moss, Pine, Forest))
 }
 
@@ -47,15 +51,17 @@ private val type = Typography(
 )
 
 private val light = lightColorScheme(
-    primary = Brand.Moss, onPrimary = Color.White, primaryContainer = Brand.Mint, onPrimaryContainer = Brand.Forest,
+    primary = Brand.Emerald, onPrimary = Color.White, primaryContainer = Brand.Mint, onPrimaryContainer = Brand.Forest,
+    tertiary = Brand.Moss, onTertiary = Color.White,
     secondary = Color(0xFF3E6B5A), onSecondary = Color.White, secondaryContainer = Color(0xFFE3F1E6), onSecondaryContainer = Brand.Pine,
-    background = Color(0xFFFBFDFB), onBackground = Brand.Forest, surface = Color.White, onSurface = Brand.Forest,
+    background = Brand.Pearl, onBackground = Brand.Charcoal, surface = Color.White, onSurface = Brand.Charcoal,
     surfaceVariant = Color(0xFFF1F8F2), onSurfaceVariant = Color(0xFF3C5A52), surfaceContainer = Color(0xFFF4FAF5),
     surfaceContainerHigh = Color(0xFFEAF4EC), outline = Color(0xFF6B857D), outlineVariant = Color(0xFFD3E2D7),
     error = Brand.Danger, onError = Color.White, errorContainer = Color(0xFFFCE4E2), onErrorContainer = Color(0xFF5F1410),
 )
 private val dark = darkColorScheme(
-    primary = Brand.Sage, onPrimary = Brand.Forest, primaryContainer = Brand.Moss, onPrimaryContainer = Brand.Mint,
+    primary = Brand.EmeraldBright, onPrimary = Brand.Forest, primaryContainer = Brand.Moss, onPrimaryContainer = Brand.Mint,
+    tertiary = Brand.NeonMint, onTertiary = Brand.Forest,
     secondary = Color(0xFFA9CDB5), onSecondary = Brand.Forest, secondaryContainer = Brand.Spruce, onSecondaryContainer = Brand.Mint,
     background = Color(0xFF04191A), onBackground = Brand.Mint, surface = Color(0xFF0A2522), onSurface = Brand.Mint,
     surfaceVariant = Color(0xFF0D302A), onSurfaceVariant = Color(0xFFB4D0BF), surfaceContainer = Color(0xFF0D2C28),

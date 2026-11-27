@@ -6,7 +6,7 @@ import { requireRole } from '../middleware/auth.js';
 import { ok } from '../middleware/errors.js';
 import { bad, conflict, notFound, unavailable } from '../lib/errors.js';
 import { hostProfileSchema, availabilitySchema, uploadSchema, nearbyQuery } from '../lib/schemas.js';
-import { geohashForLocation, geohashQueryBounds, distanceKm, roundKm, inServiceArea } from '../lib/geo.js';
+import { geohashForLocation, geohashQueryBounds, distanceKm, roundKm, inServiceArea, approxArea } from '../lib/geo.js';
 import { isOpenNow } from '../lib/hours.js';
 import { enqueue } from '../services/outbox.js';
 import { ts } from '../lib/paginate.js';
@@ -84,7 +84,7 @@ export function hostRoutes({ db, config, settings, fileStore }) {
         const compatible = (!connector || eq.connectors?.includes(connector)) && (!vehicleType || eq.vehicleTypes?.includes(vehicleType));
         if (!compatible) continue;
         items.push({
-          hostId: d.id, displayName: h.displayName, straightLineKm: roundKm(km),
+          hostId: d.id, displayName: h.displayName, straightLineKm: roundKm(km), approxArea: approxArea(h.location),
           connectors: eq.connectors, vehicleTypes: eq.vehicleTypes, powerKw: eq.powerKw, chargerType: eq.chargerType, phase: eq.phase,
           bookableNow: isHostBookable(h, now), openNow: isOpenNow(h.hours, now), hours: h.hours,
           rating: h.rating?.count ? { average: Math.round((h.rating.sum / h.rating.count) * 10) / 10, count: h.rating.count } : null,

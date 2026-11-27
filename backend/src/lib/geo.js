@@ -8,3 +8,12 @@ export const mapsDirectionsUrl = (lat, lng) =>
 export function inServiceArea(point, areas) {
   return areas.find((a) => a.active && distanceKm(point, a.center) <= a.radiusKm) || null;
 }
+
+// Privacy-safe map area for discovery: the centre of the ~1.1 km grid cell containing the host.
+// Exact coordinates are only revealed to the customer after the host accepts a request.
+const CELL = 0.01;
+export const approxArea = (p) => ({
+  lat: Math.round((Math.floor(p.lat / CELL) * CELL + CELL / 2) * 1e4) / 1e4,
+  lng: Math.round((Math.floor(p.lng / CELL) * CELL + CELL / 2) * 1e4) / 1e4,
+  radiusM: 800,
+});

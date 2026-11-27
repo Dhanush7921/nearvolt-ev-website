@@ -15,6 +15,7 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -162,7 +163,10 @@ fun FindScreen(app: AppViewModel, exclude: String?, openRequest: (String) -> Uni
                 else -> {
                     s.result?.let { r ->
                         item { Text(stringResource(R.string.find_checked_at, Time.ago(r.checkedAt)) + " · " + stringResource(R.string.find_straight_line_note), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                        items(r.items, key = { it.hostId }) { h -> HostCard(h) { selected = h } }
+                        if (r.items.any { it.approxArea != null }) item(key = "map") {
+                            HostMap(r.items, s.fix?.point, selected?.hostId, MaterialTheme.colorScheme.background.luminance() < 0.5f, onSelect = { selected = it })
+                        }
+                        items(r.items, key = { it.hostId }) { h -> Box(Modifier.animateItem()) { HostCard(h) { selected = h } } }
                     }
                 }
             }

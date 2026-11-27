@@ -121,6 +121,8 @@ android {
         resValues = true
     }
     packaging { resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" } }
+    // MapLibre ships native code for every ABI. Per-ABI APKs keep sideload downloads small; a universal APK is still produced.
+    splits { abi { isEnable = true; reset(); include("arm64-v8a", "armeabi-v7a", "x86_64"); isUniversalApk = true } }
     testOptions { unitTests.isReturnDefaultValues = true }
     lint {
         abortOnError = true
@@ -174,6 +176,7 @@ dependencies {
     implementation(libs.credentials)
     implementation(libs.credentials.play)
     implementation(libs.googleid)
+    implementation(libs.maplibre)
     implementation(libs.play.location)
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)

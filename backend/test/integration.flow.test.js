@@ -69,7 +69,10 @@ test('unverified hosts are hidden; approval requires full checklist', async () =
   assert.equal(n.body.data.items.length, 1);
   assert.equal(n.body.data.items[0].bookableNow, false); // approved but offline
   const item = n.body.data.items[0];
-  assert.equal(item.location, undefined); assert.equal(item.address, undefined); // no private data in search
+  assert.equal(item.location, undefined);
+  // Map shows only a ~1 km grid cell, never the exact host coordinates.
+  assert.ok(item.approxArea && item.approxArea.radiusM === 800);
+  assert.ok(Math.abs(((item.approxArea.lat * 1e4) % 100) - 50) < 1e-6 || Math.abs(((item.approxArea.lat * 1e4) % 100) + 50) < 1e-6); assert.equal(item.address, undefined); // no private data in search
   await request(app).post('/api/v1/admin/hosts/host1/suspend').set(bearer(T.admin)).send({ reason: 'Safety complaint under review' }).expect(200);
   n = await request(app).get('/api/v1/hosts/nearby').query(NEAR).set(bearer(T.c1)).expect(200);
   assert.equal(n.body.data.items.length, 0);
