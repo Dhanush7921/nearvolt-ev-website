@@ -75,6 +75,10 @@ test('unverified hosts are hidden; approval requires full checklist', async () =
   assert.equal(item.location, undefined);
   // Map shows only a ~1 km grid cell, never the exact host coordinates.
   assert.ok(item.approxArea && item.approxArea.radiusM === 800);
+  // Privacy across endpoints: discovery never carries the exact coordinates or the street address.
+  const nbJson = JSON.stringify(n.body);
+  assert.ok(!nbJson.includes('17.7231') && !nbJson.includes('83.3013') && !nbJson.includes('MVP Colony'));
+  await request(app).get('/api/v1/hosts/me').set(bearer(T.c1)).expect(403); // host-only and keyed by caller: no host id to tamper with
   assert.ok(Math.abs(((item.approxArea.lat * 1e4) % 100) - 50) < 1e-6 || Math.abs(((item.approxArea.lat * 1e4) % 100) + 50) < 1e-6); assert.equal(item.address, undefined); // no private data in search
   await request(app).post('/api/v1/admin/hosts/host1/suspend').set(bearer(T.admin)).send({ reason: 'Safety complaint under review' }).expect(200);
   n = await request(app).get('/api/v1/hosts/nearby').query(NEAR).set(bearer(T.c1)).expect(200);
@@ -103,6 +107,8 @@ test('full emergency workflow with location privacy, idempotency and feedback', 
   const id = r1.body.data.id;
   assert.equal(r1.body.data.hostLocation, undefined); // hidden before acceptance
   assert.equal(r1.body.data.batteryPercent, 8); assert.equal(r1.body.data.urgent, true);
+  const lst = await request(app).get('/api/v1/requests?as=customer').set(bearer(T.c1)).expect(200);
+  assert.ok(!JSON.stringify(lst.body).includes('MVP Colony') && lst.body.data.items.every((x) => !x.hostLocation && !x.pin)); // nothing before acceptance
   assert.ok(notifications.some((n) => n.uid === 'host1' && n.type === 'request.new' && n.body.includes('battery 8%, urgent')));
   assert.ok(!JSON.stringify(notifications).includes('MVP Colony')); // no address in push
 
