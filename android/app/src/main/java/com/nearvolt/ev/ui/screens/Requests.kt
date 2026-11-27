@@ -98,7 +98,7 @@ fun RequestScreen(id: String, onBack: () -> Unit, findAlternatives: (String) -> 
             r == null -> LoadingState(Modifier.padding(pad))
             else -> Column(Modifier.padding(pad).verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 val isCustomer = r.role == "customer"
-                NvCard {
+                NvCard(modifier = Modifier.sharedElement("req-${r.id}")) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(if (isCustomer) r.hostName else r.customerName ?: "", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
                         StatusPill(RequestText.status(r.status), RequestText.tone(r.status))
@@ -124,6 +124,7 @@ fun RequestScreen(id: String, onBack: () -> Unit, findAlternatives: (String) -> 
                     }
                 }
                 if (isCustomer && r.pinStatus != null) SessionPinCard(r, refreshing = s.busy == "pin") { vm.refreshPin() }
+                if (r.status in setOf("ACCEPTED", "ARRIVED", "CHARGING")) EvIllustration(charging = r.status == "CHARGING", height = 120.dp)
                 if (r.status == "CHARGING") ChargingProgress(r)
                 InlineMessage(s.actionError)
                 Actions(r, s.busy, onAct = { a -> when (a) { "cancel", "reject", "dispute" -> confirm = a; "start" -> pinEntry = true; else -> vm.act(a) } }, findAlternatives = { findAlternatives(r.hostId) })
@@ -244,8 +245,10 @@ fun HistoryScreen(asRole: String, open: (String) -> Unit, onBack: (() -> Unit)? 
                 items.isEmpty() -> item { EmptyState(stringResource(R.string.history_empty_title), stringResource(R.string.history_empty_body)) }
                 else -> {
                     items(items, key = { it.id }) { r ->
-                        NvCard(onClick = { open(r.id) }) {
+                        NvCard(onClick = { open(r.id) }, modifier = Modifier.animateItem().sharedElement("req-${r.id}")) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
+                                LeadingBadge(if (r.status == "COMPLETED") Icons.Outlined.TaskAlt else if (r.status in RequestText.ACTIVE) Icons.Outlined.ElectricBolt else Icons.Outlined.History, RequestText.tone(r.status))
+                                Spacer(Modifier.width(12.dp))
                                 Text(if (asRole == "customer") r.hostName else r.customerName ?: "", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
                                 StatusPill(RequestText.status(r.status), RequestText.tone(r.status))
                             }

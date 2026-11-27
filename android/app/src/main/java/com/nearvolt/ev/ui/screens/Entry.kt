@@ -97,13 +97,15 @@ fun SignInScreen(vm: AppViewModel) {
     var phone by remember { mutableStateOf("") }
     var otp by remember { mutableStateOf("") }
     var resendIn by remember { mutableIntStateOf(0) }
+    var otpExpiresIn by remember { mutableIntStateOf(0) }
+    LaunchedEffect(otpExpiresIn) { if (otpExpiresIn > 0) { delay(1000); otpExpiresIn-- } }
     val scope = rememberCoroutineScope()
     LaunchedEffect(resendIn) { if (resendIn > 0) { delay(1000); resendIn-- } }
     LaunchedEffect(state.message) { state.message?.let { error = it; vm.consumeMessage() } }
 
     fun sendOtp() = scope.launch {
         busy = true; error = null
-        when (val r = vm.container.auth.sendOtp(phone)) { is ApiResult.Ok -> { mode = "otp"; resendIn = r.value.resendAfterSeconds }; is ApiResult.Err -> error = r.message }
+        when (val r = vm.container.auth.sendOtp("+91$phone")) { is ApiResult.Ok -> { mode = "otp"; otp = ""; resendIn = r.value.resendAfterSeconds; otpExpiresIn = r.value.expiresInSeconds }; is ApiResult.Err -> error = r.message }
         busy = false
     }
 
@@ -122,7 +124,9 @@ fun SignInScreen(vm: AppViewModel) {
                     "choose" -> {
                         PrimaryButton(stringResource(R.string.signin_google), { busy = true; error = null; vm.google(ctx as Activity) { busy = false; error = it } }, loading = busy)
                         SecondaryButton(stringResource(R.string.signin_email), { mode = "email" }, icon = Icons.Outlined.Email)
-                        if (phoneEnabled) SecondaryButton(stringResource(R.string.signin_phone), { mode = "phone" }, icon = Icons.Outlined.Phone)
+                        // Phone OTP stays behind the server feature flag until an approved SMS provider exists.
+                        val phoneUnavailable = stringResource(R.string.signin_phone_unavailable)
+                        SecondaryButton(stringResource(R.string.signin_phone), { if (phoneEnabled) mode = "phone" else error = phoneUnavailable }, icon = Icons.Outlined.Phone)
                     }
                     "email" -> {
                         OutlinedTextField(email, { email = it.trim() }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.field_email)) }, singleLine = true,
@@ -148,23 +152,27 @@ fun SignInScreen(vm: AppViewModel) {
                         TextButton(onClick = { mode = "email" }) { Text(stringResource(R.string.action_back)) }
                     }
                     "phone" -> {
-                        OutlinedTextField(phone, { phone = it.filter { c -> c.isDigit() || c == '+' || c == ' ' }.take(16) }, Modifier.fillMaxWidth(),
-                            label = { Text(stringResource(R.string.field_mobile)) }, prefix = { Text("+91 ") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone))
+                        com.nearvolt.ev.ui.components.PhoneNumberField(phone, { phone = it; error = null }, enabled = !busy)
                         Text(stringResource(R.string.signin_sms_note), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        PrimaryButton(stringResource(R.string.signin_send_code), { sendOtp() }, enabled = phone.filter { it.isDigit() }.length >= 10, loading = busy)
-                        TextButton(onClick = { mode = "choose" }) { Text(stringResource(R.string.action_back)) }
+                        PrimaryButton(stringResource(R.string.signin_send_code), { sendOtp() }, enabled = com.nearvolt.ev.ui.components.PhoneRules.validIndian(phone), loading = busy)
+                        TextButton(onClick = { mode = "choose"; error = null }) { Text(stringResource(R.string.action_back)) }
                     }
                     "otp" -> {
-                        OutlinedTextField(otp, { otp = it.filter(Char::isDigit).take(6) }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.field_otp)) },
-                            singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword))
-                        PrimaryButton(stringResource(R.string.signin_verify), {
+                        val verify: () -> Unit = {
                             scope.launch { busy = true; error = null
-                                when (val o = vm.container.auth.verifyOtp(phone, otp)) { is AuthOutcome.Failed -> error = o.message; else -> Unit }
+                                when (val o = vm.container.auth.verifyOtp("+91$phone", otp)) { is AuthOutcome.Failed -> { error = o.message; otp = "" }; else -> Unit }
                                 busy = false }
-                        }, enabled = otp.length == 6, loading = busy)
+                        }
+                        Text(stringResource(R.string.signin_code_sent_to, com.nearvolt.ev.ui.components.PhoneRules.mask("+91$phone").orEmpty()), style = MaterialTheme.typography.bodyMedium)
+                        com.nearvolt.ev.ui.components.SmsCodeAutofill(active = otpExpiresIn > 0) { code -> otp = code }
+                        com.nearvolt.ev.ui.components.OtpBoxes(otp, { otp = it; error = null }, error = error != null, enabled = !busy && otpExpiresIn > 0)
+                        Text(if (otpExpiresIn > 0) stringResource(R.string.signin_code_expires_in, otpExpiresIn / 60, otpExpiresIn % 60) else stringResource(R.string.signin_code_expired),
+                            style = MaterialTheme.typography.bodySmall, color = if (otpExpiresIn > 0) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error)
+                        PrimaryButton(stringResource(R.string.signin_verify), verify, enabled = otp.length == 6 && otpExpiresIn > 0, loading = busy)
                         TextButton(onClick = { sendOtp() }, enabled = resendIn == 0 && !busy) {
                             Text(if (resendIn > 0) stringResource(R.string.signin_resend_in, resendIn) else stringResource(R.string.signin_resend))
                         }
+                        TextButton(onClick = { mode = "phone"; otp = ""; error = null }) { Text(stringResource(R.string.signin_change_number)) }
                     }
                 }
             }

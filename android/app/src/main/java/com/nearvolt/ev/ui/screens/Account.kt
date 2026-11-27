@@ -1,5 +1,8 @@
 package com.nearvolt.ev.ui.screens
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -49,18 +52,31 @@ fun NotificationsScreen(open: (String) -> Unit, vm: NotificationsViewModel = vie
     LaunchedEffect(Unit) { vm.load() }
     LazyColumn(contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item {
-            Row { Text(stringResource(R.string.alerts_title), style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f))
-                if (items.any { !it.read }) TextButton(onClick = vm::readAll) { Text(stringResource(R.string.alerts_read_all)) } }
+            HeroHeader(stringResource(R.string.alerts_title), items.count { !it.read }.let { n -> androidx.compose.ui.res.pluralStringResource(R.plurals.alerts_hero_sub, n, n) })
+            if (items.any { !it.read }) TextButton(onClick = vm::readAll) { Text(stringResource(R.string.alerts_read_all)) }
         }
         when {
             err != null && items.isEmpty() -> item { ErrorState(err!!) { vm.load() } }
             loading && items.isEmpty() -> item { LoadingState() }
             items.isEmpty() -> item { EmptyState(stringResource(R.string.alerts_empty_title), stringResource(R.string.alerts_empty_body)) }
             else -> items(items, key = { it.id }) { n ->
-                NvCard(onClick = n.requestId?.let { id -> { open(id) } }) {
-                    Text(n.title, style = MaterialTheme.typography.titleSmall, fontWeight = if (n.read) FontWeight.Normal else FontWeight.Bold)
-                    Text(n.body, style = MaterialTheme.typography.bodyMedium)
-                    Text(Time.ago(n.at), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                NvCard(onClick = n.requestId?.let { id -> { open(id) } }, modifier = Modifier.animateItem()) {
+                    Row(verticalAlignment = Alignment.Top) {
+                        val (ic, tone) = when {
+                            n.type.contains("rejected") || n.type.contains("expired") || n.type.contains("cancel") || n.type.contains("dispute") -> Icons.Outlined.ErrorOutline to Tone.Bad
+                            n.type.contains("new") -> Icons.Outlined.NotificationsActive to Tone.Warn
+                            n.type.startsWith("request") -> Icons.Outlined.ElectricBolt to Tone.Good
+                            else -> Icons.Outlined.Campaign to Tone.Neutral
+                        }
+                        LeadingBadge(ic, tone)
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(n.title, style = MaterialTheme.typography.titleSmall, fontWeight = if (n.read) FontWeight.Normal else FontWeight.Bold)
+                            Text(n.body, style = MaterialTheme.typography.bodyMedium)
+                            Text(Time.ago(n.at), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        if (!n.read) Box(Modifier.padding(top = 6.dp).size(8.dp).background(MaterialTheme.colorScheme.primary, CircleShape))
+                    }
                 }
             }
         }
@@ -81,9 +97,14 @@ fun AccountScreen(app: AppViewModel, openSupport: () -> Unit) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(stringResource(R.string.account_title), style = MaterialTheme.typography.headlineMedium)
         NvCard {
+            Box(Modifier.size(64.dp).background(androidx.compose.ui.graphics.Brush.sweepGradient(listOf(com.nearvolt.ev.ui.theme.Brand.NeonMint, MaterialTheme.colorScheme.primary, com.nearvolt.ev.ui.theme.Brand.NeonMint)), CircleShape).padding(3.dp)
+                .background(MaterialTheme.colorScheme.primaryContainer, CircleShape), contentAlignment = Alignment.Center) {
+                Text(me.name.split(' ').filter(String::isNotBlank).take(2).joinToString("") { it.take(1).uppercase() }, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
+            }
+            Spacer(Modifier.height(10.dp))
             Text(me.name, style = MaterialTheme.typography.titleLarge)
-            Text(listOfNotNull(me.email, me.phone).joinToString(" · "), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(stringResource(if (me.role == "host") R.string.role_host else R.string.role_customer), style = MaterialTheme.typography.bodySmall)
+            Text(listOfNotNull(me.email, com.nearvolt.ev.ui.components.PhoneRules.mask(me.phone)).joinToString(" · "), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(6.dp)); StatusPill(stringResource(if (me.role == "host") R.string.role_host else R.string.role_customer), Tone.Good)
             TextButton(onClick = { editing = true }) { Text(stringResource(R.string.account_edit)) }
         }
         if (me.phone == null && s.config?.featureFlags?.get("phoneLogin") == true) SecondaryButton(stringResource(R.string.account_link_phone), { linkPhone = true }, icon = Icons.Outlined.Phone)
@@ -169,7 +190,10 @@ fun SupportScreen(onBack: () -> Unit, vm: SupportViewModel = viewModel()) {
     val cats = listOf("unsafe_charging" to R.string.cat_unsafe, "host_issue" to R.string.cat_host, "customer_issue" to R.string.cat_customer, "app_issue" to R.string.cat_app, "account" to R.string.cat_account, "other" to R.string.cat_other)
     Scaffold(topBar = { TopAppBar(title = { Text(stringResource(R.string.support_title)) }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.action_back)) } }) }) { pad ->
         Column(Modifier.padding(pad).verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            NvCard { Text(stringResource(R.string.support_emergency), style = MaterialTheme.typography.bodyMedium); TextButton(onClick = { Links.dial(ctx, Links.EMERGENCY) }) { Text(stringResource(R.string.emergency_call)) } }
+            HeroHeader(stringResource(R.string.support_title), stringResource(R.string.support_hero_sub))
+            NvCard { Row(verticalAlignment = Alignment.CenterVertically) { LeadingBadge(Icons.Outlined.Sos, Tone.Bad); Spacer(Modifier.width(12.dp))
+                Text(stringResource(R.string.support_emergency), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f)) }
+                TextButton(onClick = { Links.dial(ctx, Links.EMERGENCY) }) { Text(stringResource(R.string.emergency_call)) } }
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) { cats.forEach { (k, l) -> FilterChip(category == k, { category = k }, label = { Text(stringResource(l)) }) } }
             OutlinedTextField(text, { text = it.take(2000) }, Modifier.fillMaxWidth().heightIn(min = 120.dp), label = { Text(stringResource(R.string.support_message)) })
             InlineMessage(msg)

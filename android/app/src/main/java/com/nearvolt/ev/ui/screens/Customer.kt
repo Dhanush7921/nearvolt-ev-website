@@ -117,7 +117,7 @@ fun FindScreen(app: AppViewModel, exclude: String?, openRequest: (String) -> Uni
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item { HeroHeader(stringResource(R.string.find_title), stringResource(R.string.find_subtitle)) }
             s.active?.let { a -> item {
-                NvCard(onClick = { openRequest(a.id) }) {
+                NvCard(onClick = { openRequest(a.id) }, modifier = Modifier.sharedElement("req-${a.id}")) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Outlined.ElectricBolt, null, tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.width(10.dp))
                         Column(Modifier.weight(1f)) { Text(stringResource(R.string.find_active_request), style = MaterialTheme.typography.titleMedium); Text("${a.hostName} · ${RequestText.status(a.status)}", style = MaterialTheme.typography.bodyMedium) }
@@ -159,7 +159,7 @@ fun FindScreen(app: AppViewModel, exclude: String?, openRequest: (String) -> Uni
             }
             if (s.fix != null) item { Filters(s, vm) }
             when {
-                s.fix == null -> item { EmptyState(stringResource(R.string.find_start_title), stringResource(R.string.find_start_body)) }
+                s.fix == null -> item { Column { EvIllustration(charging = false, height = 120.dp); EmptyState(stringResource(R.string.find_start_title), stringResource(R.string.find_start_body)) } }
                 s.error != null -> item { ErrorState(s.error!!) { vm.search() } }
                 s.loading && s.result == null -> item { SkeletonList(3) }
                 s.result != null && s.result!!.items.isEmpty() && s.locationIssue != "OUTSIDE" -> item { EmptyState(stringResource(R.string.find_empty_title), stringResource(R.string.find_empty_body)) }

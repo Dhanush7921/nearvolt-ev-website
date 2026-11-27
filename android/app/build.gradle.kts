@@ -121,6 +121,12 @@ android {
         resValues = true
     }
     packaging { resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" } }
+    // Telugu/Hindi drafts (pending native-speaker review) are compiled only on request. Safety/legal strings need a
+    // separate sign-off flag; without it they fall back to English even when the general drafts are enabled.
+    sourceSets.getByName("main") {
+        if (prop("NV_I18N_DRAFT") == "true") res.srcDir("src/i18nDraft/res")
+        if (prop("NV_I18N_SAFETY_REVIEWED") == "true") res.srcDir("src/i18nSafety/res")
+    }
     // MapLibre ships native code for every ABI. Per-ABI APKs keep sideload downloads small; a universal APK is still produced.
     splits { abi { isEnable = true; reset(); include("arm64-v8a", "armeabi-v7a", "x86_64"); isUniversalApk = true } }
     testOptions { unitTests.isReturnDefaultValues = true }
@@ -177,6 +183,7 @@ dependencies {
     implementation(libs.credentials.play)
     implementation(libs.googleid)
     implementation(libs.maplibre)
+    implementation(libs.play.sms.api)
     implementation(libs.play.location)
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)

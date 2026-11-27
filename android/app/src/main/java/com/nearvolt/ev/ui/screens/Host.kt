@@ -91,7 +91,7 @@ fun HostDashboard(openRequest: (String) -> Unit, openListing: () -> Unit, openHi
         val l = s.listing
         item {
             val online = l?.status == "APPROVED" && l.available
-            HeroHeader(stringResource(R.string.dash_title), stringResource(R.string.dash_hero_sub, s.incoming.count { it.status == "REQUESTED" }),
+            HeroHeader(stringResource(R.string.dash_title), s.incoming.count { it.status == "REQUESTED" }.let { n -> androidx.compose.ui.res.pluralStringResource(R.plurals.dash_hero_sub, n, n) },
                 live = online, liveLabel = stringResource(if (online) R.string.dash_online else R.string.dash_offline))
         }
         when {
@@ -104,7 +104,7 @@ fun HostDashboard(openRequest: (String) -> Unit, openListing: () -> Unit, openHi
                 item { SectionTitle(stringResource(R.string.dash_incoming)) }
                 if (s.incoming.isEmpty()) item { EmptyState(stringResource(R.string.dash_no_requests), stringResource(R.string.dash_no_requests_body)) }
                 items(s.incoming, key = { it.id }) { r ->
-                    NvCard(onClick = { openRequest(r.id) }) {
+                    NvCard(onClick = { openRequest(r.id) }, modifier = Modifier.animateItem().sharedElement("req-${r.id}")) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(r.customerName ?: "", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
                             StatusPill(RequestText.status(r.status), RequestText.tone(r.status))
@@ -202,7 +202,12 @@ fun ListingEditor(vm: HostViewModel = viewModel()) {
     }
 
     Column(Modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text(stringResource(R.string.listing_title), style = MaterialTheme.typography.headlineMedium)
+        val steps = listOf(name.trim().length >= 2 && address.trim().length >= 5, lat.toDoubleOrNull() != null && lng.toDoubleOrNull() != null,
+            connectors.isNotEmpty() && vehicles.isNotEmpty() && (power.toDoubleOrNull() ?: 0.0) > 0, timeOk.matches(open) && timeOk.matches(close),
+            earthing && rcd && cabling && covered && accurate, l.photos >= 2 && l.documents >= 1)
+        HeroHeader(stringResource(R.string.listing_title), stringResource(R.string.listing_progress, steps.count { it }, steps.size))
+        val prog by androidx.compose.animation.core.animateFloatAsState(steps.count { it } / steps.size.toFloat(), label = "listing")
+        LinearProgressIndicator(progress = { prog }, modifier = Modifier.fillMaxWidth().height(6.dp), strokeCap = androidx.compose.ui.graphics.StrokeCap.Round)
         if (l.status == "APPROVED") Text(stringResource(R.string.listing_reverify_note), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         SectionTitle(stringResource(R.string.listing_place))
         OutlinedTextField(name, { name = it.take(60) }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.field_listing_name)) }, singleLine = true, enabled = editable)

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SAFETY / LEGAL TEXT - hi DRAFT - PENDING NATIVE-SPEAKER AND LEGAL REVIEW.
+     Never shipped unless -PNV_I18N_SAFETY_REVIEWED=true is set after sign-off. Until then these keys fall back to English. -->
+<resources>
+    <string name="account_disclaimer">NEARVOLT EV, EV ड्राइवरों को स्वतंत्र चार्जिंग होस्ट से जोड़ता है। हम चार्जिंग उपकरण नहीं बनाते, लगाते या आपूर्ति करते।</string>
+    <string name="consent_data_body">हम आपकी लोकेशन का उपयोग केवल तब करते हैं जब आप खोजते हैं, ताकि पास के सत्यापित होस्ट दिखा सकें। होस्ट का सटीक पता आपको तभी दिखाया जाता है जब वे आपका अनुरोध स्वीकार करते हैं। आप कभी भी अपना खाता हटा सकते हैं।</string>
+    <string name="consent_data_title">आपका डेटा</string>
+    <string name="consent_role_body">NEARVOLT EV, EV ड्राइवरों को पास के सत्यापित चार्जिंग होस्ट से जोड़ता है। हम चार्जिंग उपकरण नहीं बनाते, लगाते या आपूर्ति करते, और होस्ट स्वतंत्र हैं।</string>
+    <string name="consent_role_title">NEARVOLT EV क्या है</string>
+    <string name="consent_terms_check">मैंने शर्तें और गोपनीयता नीति पढ़ ली है और स्वीकार करता/करती हूँ</string>
+    <string name="decl_accurate">मेरे द्वारा दी गई जानकारी सही है</string>
+    <string name="decl_cabling">केबल और सॉकेट मेरे द्वारा बताए गए करंट के लिए रेटेड हैं</string>
+    <string name="decl_covered">चार्जिंग स्थान सूखा है और बारिश से सुरक्षित है</string>
+    <string name="decl_dedicated">चार्जिंग पॉइंट एक अलग सर्किट पर है</string>
+    <string name="decl_earthing">आपूर्ति में उचित अर्थिंग है</string>
+    <string name="decl_rcd">सर्किट RCD/ELCB से सुरक्षित है</string>
+    <string name="delete_body">यह आपकी प्रोफ़ाइल, सूचनाएँ और डिवाइस स्थायी रूप से हटा देगा और आपको साइन आउट कर देगा। सुरक्षा और विवादों के लिए ज़रूरी होने पर पिछले चार्जिंग रिकॉर्ड आपकी निजी जानकारी के बिना रखे जाते हैं। इसे वापस नहीं किया जा सकता।</string>
+    <string name="detail_confirm_compat">मैं पुष्टि करता/करती हूँ कि मेरा वाहन %1$s से अधिकतम %2$s तक सुरक्षित रूप से चार्ज हो सकता है</string>
+    <string name="detail_privacy_note">सटीक पता होस्ट के स्वीकार करने के बाद ही साझा किया जाता है।</string>
+    <string name="emergency_call">आपातकाल? 112 पर कॉल करें</string>
+    <string name="emergency_short">112 पर कॉल करें</string>
+    <string name="gate_config_body">इस बिल्ड में Firebase कॉन्फ़िगरेशन नहीं है। आधिकारिक NEARVOLT EV ऐप इंस्टॉल करें।</string>
+    <string name="gate_config_title">ऐप कॉन्फ़िगर नहीं है</string>
+    <string name="gate_maintenance_body">हम सुधार कर रहे हैं। कृपया थोड़ी देर बाद कोशिश करें।</string>
+    <string name="gate_maintenance_title">रखरखाव जारी है</string>
+    <string name="gate_update_body">यह संस्करण अब समर्थित नहीं है। सुरक्षित रूप से जारी रखने के लिए अपडेट करें।</string>
+    <string name="gate_update_title">अपडेट ज़रूरी</string>
+    <string name="listing_files_body">%1$d फ़ोटो · %2$d दस्तावेज़ अपलोड हुए। कम से कम 2 साफ़ फ़ोटो (चार्जिंग पॉइंट और सप्लाई बोर्ड) और 1 विद्युत सुरक्षा दस्तावेज़ जोड़ें।</string>
+    <string name="listing_location_privacy">आपका सटीक पता और लोकेशन खोज में कभी नहीं दिखाया जाता। ड्राइवर इसे आपके स्वीकार करने के बाद ही देखते हैं।</string>
+    <string name="listing_pending_body">लाइव होने से पहले हमारी टीम आपका विवरण सत्यापित करेगी और विद्युत सुरक्षा जाँच की व्यवस्था करेगी।</string>
+    <string name="listing_reverify_note">लोकेशन या उपकरण बदलने पर आपकी लिस्टिंग फिर से सत्यापन के लिए जाएगी।</string>
+    <string name="listing_safety">सुरक्षा घोषणा</string>
+    <string name="listing_safety_body">इन घोषणाओं की जाँच सत्यापन के दौरान होती है। एडमिन द्वारा विद्युत सुरक्षा सत्यापित करने के बाद ही आपकी लिस्टिंग लाइव होती है।</string>
+    <string name="listing_submit_note">सबमिट करने से आपकी लिस्टिंग स्वीकृत नहीं होती। स्वीकृति के लिए मैन्युअल सुरक्षा सत्यापन ज़रूरी है।</string>
+    <string name="onb2_body">हर होस्ट को दिखाई देने से पहले विद्युत सुरक्षा जाँच सहित मैन्युअल रूप से सत्यापित किया जाता है।</string>
+    <string name="onb2_title">सत्यापित और सुरक्षा पहले</string>
+    <string name="safety_body">प्लग लगाने से पहले सॉकेट और केबल जाँचें। गर्मी, जलने की गंध या चिंगारी दिखे तो तुरंत रोकें और रिपोर्ट करें।</string>
+    <string name="safety_title">सुरक्षित रूप से चार्ज करें</string>
+    <string name="signin_legal">जारी रखकर आप हमारी शर्तों और गोपनीयता नीति से सहमत होते हैं।</string>
+    <string name="support_emergency">अगर कोई खतरे में है या आग या बिजली का झटका है, तो पहले आपातकालीन सेवाओं को कॉल करें।</string>
+    <string name="battery_confirm">मैं पुष्टि करता/करती हूँ कि मेरी बैटरी लगभग %1$d%% है</string>
+    <string name="pin_share_body">यह PIN होस्ट को केवल तभी दिखाएँ जब आप चार्जिंग पॉइंट पर हों। इसे कभी फ़ोन या संदेश से साझा न करें।</string>
+    <string name="pin_enter_body">ड्राइवर से उनके ऐप में दिखाया गया 4 अंकों का PIN माँगें। इससे पुष्टि होती है कि आप सही वाहन चार्ज कर रहे हैं।</string>
+    <string name="charging_no_metering">चार्जिंग शुरू होने के बाद का समय। NEARVOLT EV ऊर्जा नहीं मापता; चार्ज के बारे में होस्ट से सहमति करें।</string>
+    <string name="emergency_find_nearest">आपातकाल: सबसे पास चार्जिंग खोजें</string>
+    <string name="emergency_nearest_found">आपातकाल: सबसे पास उपलब्ध होस्ट खोलें</string>
+    <string name="support_hero_sub">हम हर सुरक्षा रिपोर्ट की समीक्षा करते हैं। असुरक्षित चार्जिंग को पहले देखा जाता है।</string>
+</resources>

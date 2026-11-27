@@ -201,15 +201,12 @@
     <string name="signin_email">Continue with email and password</string>
     <string name="signin_google">Continue with Google</string>
     <string name="signin_legal">By continuing you agree to our Terms and Privacy Policy.</string>
-    <string name="signin_link_sent">We sent a sign-in link to %1$s. Open it on this phone to continue.</string>
     <string name="signin_phone">Continue with mobile number</string>
     <string name="signin_resend">Resend code</string>
     <string name="signin_resend_in">Resend in %1$d s</string>
     <string name="signin_send_code">Send code</string>
-    <string name="signin_send_link">Send sign-in link</string>
     <string name="signin_sms_note">We will send a one-time code by SMS.</string>
     <string name="signin_title">Welcome to NEARVOLT EV</string>
-    <string name="signin_use_other_email">Use a different email</string>
     <string name="signin_verify">Verify</string>
     <string name="state_error_body">Something went wrong. Please try again.</string>
     <string name="state_error_title">Something went wrong</string>
@@ -260,7 +257,15 @@
     <string name="emergency_none">No available host nearby right now</string>
     <string name="splash_tagline">Emergency EV charging, close to home</string>
     <string name="splash_waking">Connecting to NEARVOLT servers… this can take up to a minute.</string>
-    <string name="dash_hero_sub">%1$d new request(s) waiting</string>
     <string name="dash_online">Online · accepting requests</string>
     <string name="dash_offline">Offline</string>
+    <string name="signin_phone_unavailable">Mobile number sign-in is not available yet. Please continue with Google or email.</string>
+    <string name="signin_code_sent_to">Enter the 6-digit code sent to %1$s</string>
+    <string name="signin_code_expires_in">Code expires in %1$d:%2$02d</string>
+    <string name="signin_code_expired">This code has expired. Request a new one.</string>
+    <string name="signin_change_number">Change number</string>
+    <string name="listing_progress">%1$d of %2$d sections complete</string>
+    <string name="support_hero_sub">We review every safety report. Unsafe charging is handled first.</string>
+    <plurals name="dash_hero_sub"><item quantity="one">%1$d new request waiting</item><item quantity="other">%1$d new requests waiting</item></plurals>
+    <plurals name="alerts_hero_sub"><item quantity="one">%1$d unread</item><item quantity="other">%1$d unread</item></plurals>
 </resources>

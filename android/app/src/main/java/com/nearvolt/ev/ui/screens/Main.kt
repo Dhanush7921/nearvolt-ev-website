@@ -22,9 +22,15 @@ import androidx.navigation.navArgument
 import com.nearvolt.ev.R
 import com.nearvolt.ev.ui.AppViewModel
 
+/** composable() that also exposes its AnimatedVisibilityScope for shared-element transitions. */
+private fun androidx.navigation.NavGraphBuilder.nvComposable(route: String, arguments: List<androidx.navigation.NamedNavArgument> = emptyList(),
+    content: @Composable (androidx.navigation.NavBackStackEntry) -> Unit) =
+    composable(route, arguments = arguments) { e -> CompositionLocalProvider(com.nearvolt.ev.ui.components.LocalNavAnimScope provides this) { content(e) } }
+
 private data class Tab(val route: String, val label: Int, val icon: ImageVector)
 
 /** Role-based shell: customers find charging; hosts manage their listing and incoming requests. */
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun MainScreen(vm: AppViewModel) {
     val state by vm.state.collectAsStateWithLifecycle()
@@ -53,27 +59,29 @@ fun MainScreen(vm: AppViewModel) {
         }
     }) { pad ->
         val reduced = com.nearvolt.ev.ui.components.rememberReducedMotion()
+        SharedTransitionLayout { CompositionLocalProvider(com.nearvolt.ev.ui.components.LocalSharedScope provides this) {
         NavHost(nav, startDestination = tabs.first().route, modifier = Modifier.padding(pad),
             enterTransition = { if (reduced) EnterTransition.None else fadeIn(tween(220)) + slideInHorizontally(tween(260)) { it / 12 } },
             exitTransition = { if (reduced) ExitTransition.None else fadeOut(tween(160)) },
             popEnterTransition = { if (reduced) EnterTransition.None else fadeIn(tween(220)) + slideInHorizontally(tween(260)) { -it / 12 } },
             popExitTransition = { if (reduced) ExitTransition.None else fadeOut(tween(160)) }) {
-            composable("find?exclude={exclude}", arguments = listOf(navArgument("exclude") { type = NavType.StringType; nullable = true; defaultValue = null })) { e ->
+            nvComposable("find?exclude={exclude}", arguments = listOf(navArgument("exclude") { type = NavType.StringType; nullable = true; defaultValue = null })) { e ->
                 FindScreen(vm, exclude = e.arguments?.getString("exclude"), openRequest = { nav.navigate("request/$it") })
             }
-            composable("find") { FindScreen(vm, null, openRequest = { nav.navigate("request/$it") }) }
-            composable("activity") { HistoryScreen(asRole = "customer", open = { nav.navigate("request/$it") }) }
-            composable("dashboard") { HostDashboard(openRequest = { nav.navigate("request/$it") }, openListing = { nav.navigate("listing") }, openHistory = { nav.navigate("hostHistory") }) }
-            composable("hostHistory") { HistoryScreen(asRole = "host", open = { nav.navigate("request/$it") }, onBack = { nav.popBackStack() }) }
-            composable("listing") { ListingEditor() }
-            composable("alerts") { NotificationsScreen(open = { nav.navigate("request/$it") }) }
-            composable("account") { AccountScreen(vm, openSupport = { nav.navigate("support") }) }
-            composable("support") { SupportScreen(onBack = { nav.popBackStack() }) }
-            composable("request/{id}") { e ->
+            nvComposable("find") { FindScreen(vm, null, openRequest = { nav.navigate("request/$it") }) }
+            nvComposable("activity") { HistoryScreen(asRole = "customer", open = { nav.navigate("request/$it") }) }
+            nvComposable("dashboard") { HostDashboard(openRequest = { nav.navigate("request/$it") }, openListing = { nav.navigate("listing") }, openHistory = { nav.navigate("hostHistory") }) }
+            nvComposable("hostHistory") { HistoryScreen(asRole = "host", open = { nav.navigate("request/$it") }, onBack = { nav.popBackStack() }) }
+            nvComposable("listing") { ListingEditor() }
+            nvComposable("alerts") { NotificationsScreen(open = { nav.navigate("request/$it") }) }
+            nvComposable("account") { AccountScreen(vm, openSupport = { nav.navigate("support") }) }
+            nvComposable("support") { SupportScreen(onBack = { nav.popBackStack() }) }
+            nvComposable("request/{id}") { e ->
                 RequestScreen(id = e.arguments?.getString("id").orEmpty(), onBack = { nav.popBackStack() },
                     findAlternatives = { exclude -> nav.navigate("find?exclude=$exclude") { popUpTo("find") { inclusive = true } } },
                     openSupport = { nav.navigate("support") })
             }
         }
+        } }
     }
 }
