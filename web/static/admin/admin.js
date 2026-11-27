@@ -1,16 +1,22 @@
 // NEARVOLT EV admin dashboard. All data comes from the authenticated backend (/api/v1/admin/*), which enforces
 // the server-side admin claim and MFA. All rendering uses DOM APIs (no innerHTML) to prevent XSS.
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, getMultiFactorResolver, TotpMultiFactorGenerator } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, getMultiFactorResolver, TotpMultiFactorGenerator, multiFactor, reauthenticateWithPopup } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
+
+import { initializeAppCheck, ReCaptchaEnterpriseProvider, getToken } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app-check.js";
 
 const CFG = window.NV_ADMIN_CONFIG || {};
 const $app = document.getElementById('app');
 const $who = document.getElementById('who');
-if (!CFG.apiBase || !CFG.firebase?.apiKey) {
+if (!CFG.apiBase || !CFG.firebase?.apiKey || !CFG.appCheckSiteKey) {
   $app.textContent = 'Admin dashboard is not configured for this deployment.';
   throw new Error('NV_ADMIN_CONFIG missing');
 }
 const app = initializeApp(CFG.firebase);
+const appCheck = initializeAppCheck(app, {
+    provider: new ReCaptchaEnterpriseProvider(CFG.appCheckSiteKey),
+    isTokenAutoRefreshEnabled: true
+});
 const auth = getAuth(app);
 
 function h(tag, attrs = {}, ...kids) {
@@ -28,7 +34,9 @@ function toast(msg) { const t = h('div', { class: 'toast', role: 'status' }, msg
 
 async function api(path, { method = 'GET', body, raw } = {}) {
   const token = await auth.currentUser?.getIdToken();
-  const r = await fetch(`${CFG.apiBase}/api/v1${path}`, { method, headers: { Authorization: `Bearer ${token}`, ...(body ? { 'Content-Type': 'application/json' } : {}) }, body: body ? JSON.stringify(body) : undefined });
+  if (!token) throw new Error("Sign in required.");
+  const { token: appCheckToken } = await getToken(appCheck);
+  const r = await fetch(`${CFG.apiBase}/api/v1${path}`, { method, headers: { Authorization: `Bearer ${token}`, "X-Firebase-AppCheck": appCheckToken, ...(body ? { 'Content-Type': 'application/json' } : {}) }, body: body ? JSON.stringify(body) : undefined });
   if (raw) { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r; }
   const j = await r.json().catch(() => ({}));
   if (!r.ok || !j.ok) throw new Error(j.error?.message || `HTTP ${r.status}`);
@@ -228,10 +236,90 @@ function complaintEdit(x, refresh) {
     h('button', { onclick: async () => { try { await api(`/admin/complaints/${x.id}`, { method: 'PATCH', body: { status: st.value, resolution: res.value || undefined } }); toast('Updated'); d.close(); refresh(); } catch (e) { toast(e.message); } } }, 'Save'));
 }
 
+
+async function enrollAdminTotp(user) {
+    try {
+        const claims = (await user.getIdTokenResult(true)).claims;
+
+        if (claims.admin !== true || !user.emailVerified) {
+            throw new Error("Verified admin account required.");
+        }
+
+        await reauthenticateWithPopup(
+            user,
+            new GoogleAuthProvider()
+        );
+
+        const session = await multiFactor(user).getSession();
+
+        const secret =
+            await TotpMultiFactorGenerator.generateSecret(session);
+
+        const code = prompt(
+            "Add this private setup key to your authenticator app:\n\n"
+            + secret.secretKey +
+            "\n\nEnter your generated 6-digit code:"
+        );
+
+        if (!code || !/^\d{6}$/.test(code.trim())) {
+            return;
+        }
+
+        const assertion =
+            TotpMultiFactorGenerator.assertionForEnrollment(
+                secret,
+                code.trim()
+            );
+
+        await multiFactor(user).enroll(
+            assertion,
+            "NEARVOLT EV Admin"
+        );
+
+        await signOut(auth);
+
+        signInView(
+            "Authenticator enrolled. Sign in again."
+        );
+
+    } catch (e) {
+        toast(e.code || "Authenticator enrollment failed.");
+    }
+}
+
 onAuthStateChanged(auth, async (user) => {
   if (!user) { $who.replaceChildren(); return signInView(); }
   const claims = (await user.getIdTokenResult()).claims;
   $who.replaceChildren(user.email || '', h('button', { class: 'ghost', onclick: () => signOut(auth) }, 'Sign out'));
   if (claims.admin !== true) return $app.replaceChildren(h('div', { class: 'center card' }, h('h1', {}, 'Not authorised'), h('p', {}, 'This account does not have admin access.')));
+
+  const enrolled = multiFactor(user).enrolledFactors.some(
+      factor => factor.factorId === TotpMultiFactorGenerator.FACTOR_ID
+  );
+
+  if (!enrolled) {
+      return $app.replaceChildren(
+          h("div", { class: "center card" },
+              h("h1", {}, "Secure your admin account"),
+              h("p", {}, "Authenticator verification is mandatory."),
+              h("button", {
+                  onclick: () => enrollAdminTotp(user)
+              }, "Set up authenticator")
+          )
+      );
+  }
+
+  if (claims.firebase?.sign_in_second_factor !== "totp") {
+      return $app.replaceChildren(
+          h("div", { class: "center card" },
+              h("h1", {}, "Verification required"),
+              h("p", {}, "Sign in again using your authenticator code."),
+              h("button", {
+                  onclick: () => signOut(auth)
+              }, "Sign out")
+          )
+      );
+  }
+
   shell();
 });
