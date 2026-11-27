@@ -444,11 +444,16 @@ export class ChargingScene {
     if (this.frames.length < 90) return;
     const avg = this.frames.reduce((a, b) => a + b, 0) / this.frames.length;
     this.frames.length = 0;
+    const cap = Math.min(window.devicePixelRatio || 1, this.opts.quality === 'high' ? 2 : 1.5);
     if (avg > 0.024 && this.dpr > 1) {
+      // Below ~42 FPS: lower the render resolution.
       this.dpr = Math.max(1, this.dpr - 0.25);
-      this.renderer.setPixelRatio(this.dpr);
-      this.resize(this.size.w, this.size.h);
-    }
+    } else if (avg < 0.0135 && this.dpr < cap) {
+      // Comfortably above 60 FPS for a full window: claw back sharpness, never above the device/quality cap.
+      this.dpr = Math.min(cap, this.dpr + 0.125);
+    } else return;
+    this.renderer.setPixelRatio(this.dpr);
+    this.resize(this.size.w, this.size.h);
   }
 
   private update(dt: number) {

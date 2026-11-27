@@ -88,13 +88,40 @@ function modal(title, ...content) {
 }
 const reasonPrompt = (label) => { const r = prompt(label); return r && r.trim().length >= 5 ? r.trim() : (r != null && toast('Reason must be at least 5 characters.'), null); };
 
+// ---------- Charts (dependency-free SVG; CSP allows no external scripts) ----------
+const SVGNS = 'http://www.w3.org/2000/svg';
+const sv = (tag, attrs = {}, ...kids) => { const e = document.createElementNS(SVGNS, tag); for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v); e.append(...kids); return e; };
+function funnelChart(a) {
+  const W = 720, H = 220, P = { l: 34, r: 8, t: 12, b: 26 }, n = a.series.length;
+  const max = Math.max(1, ...a.series.map((d) => d.created));
+  const bw = (W - P.l - P.r) / n, y = (v) => H - P.b - (v / max) * (H - P.t - P.b);
+  const svg = sv('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': `Requests per day for ${n} days: ${a.totals.created} created, ${a.totals.completed} completed` , class: 'chart' });
+  for (const t of [0, 0.5, 1]) { const v = Math.round(max * t); svg.append(sv('line', { x1: P.l, x2: W - P.r, y1: y(v), y2: y(v), class: 'grid-line' }), sv('text', { x: P.l - 6, y: y(v) + 4, 'text-anchor': 'end', class: 'axis' }, String(v))); }
+  a.series.forEach((d, i) => {
+    const x = P.l + i * bw, w = Math.max(3, bw * 0.62);
+    const g = sv('g', {}, sv('title', {}, `${d.date}: ${d.created} created, ${d.completed} completed, ${d.lost} expired/declined/cancelled`));
+    g.append(sv('rect', { x: x + (bw - w) / 2, y: y(d.created), width: w, height: Math.max(0, H - P.b - y(d.created)), rx: 3, class: 'bar-created' }));
+    g.append(sv('rect', { x: x + (bw - w) / 2, y: y(d.completed), width: w, height: Math.max(0, H - P.b - y(d.completed)), rx: 3, class: 'bar-completed' }));
+    svg.append(g);
+    if (i % Math.ceil(n / 7) === 0 || i === n - 1) svg.append(sv('text', { x: x + bw / 2, y: H - 8, 'text-anchor': 'middle', class: 'axis' }, d.date.slice(5)));
+  });
+  const rate = a.completionRate == null ? '—' : `${a.completionRate}%`;
+  return [h('div', { class: 'row chart-head' }, h('h3', {}, `Requests · last ${n} days`), h('span', { class: 'legend created' }, 'Created'), h('span', { class: 'legend completed' }, 'Completed')),
+    svg, h('div', { class: 'row kpis' }, h('span', {}, h('b', {}, a.totals.created), ' created'), h('span', {}, h('b', {}, a.totals.completed), ' completed'),
+      h('span', {}, h('b', {}, a.totals.lost), ' expired / declined / cancelled'), h('span', {}, h('b', {}, rate), ' completion rate'))];
+}
+
 // ---------- Views ----------
 const VIEWS = {
   async overview(el) {
     const d = await api('/admin/overview');
     const stats = [['Users', d.users], ['Approved hosts', d.hostsApproved], ['Hosts awaiting review', d.hostsPending], ['Active requests', d.activeRequests],
       ['Requests (24 h)', d.requestsLast24h], ['Completed (24 h)', d.completedLast24h], ['Open complaints', d.openComplaints], ['Urgent safety reports', d.urgentComplaints], ['Sheets rows pending', d.sheetsPending]];
-    el.replaceChildren(h('div', { class: 'grid' }, stats.map(([k, v]) => h('div', { class: 'card stat' }, h('b', {}, v), k))), h('p', { class: 'muted' }, `Live data · generated ${fmt(d.generatedAt)}`));
+    const chartBox = h('div', { class: 'card chart-card' }, h('p', { class: 'muted' }, 'Loading request trend…'));
+    el.replaceChildren(h('div', { class: 'grid' }, stats.map(([k, v]) => h('div', { class: 'card stat' + (k.startsWith('Urgent') && v > 0 ? ' alert' : '') }, h('b', {}, v), k))), chartBox,
+      h('p', { class: 'muted' }, `Live data · generated ${fmt(d.generatedAt)}`));
+    try { chartBox.replaceChildren(...funnelChart(await api('/admin/analytics?days=14'))); }
+    catch (e) { chartBox.replaceChildren(h('p', { class: 'err' }, `Trend unavailable: ${e.message}`)); }
   },
   async hosts(el) {
     const sel = h('select', { 'aria-label': 'Status filter' }, ['PENDING_REVIEW', 'APPROVED', 'SUSPENDED', 'REJECTED', 'DRAFT', ''].map((s) => h('option', { value: s }, s || 'All')));

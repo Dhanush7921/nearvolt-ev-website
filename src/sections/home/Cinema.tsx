@@ -68,8 +68,11 @@ export function Cinema() {
       .then(async (mod) => {
         if (disposed) return;
         if (!mod.webglAvailable() || new URLSearchParams(location.search).has('nowebgl')) return setMode('fallback');
-        const nav = navigator as Navigator & { deviceMemory?: number };
-        const low = matchMedia('(pointer: coarse)').matches || window.innerWidth < 820 || (nav.deviceMemory !== undefined && nav.deviceMemory <= 4);
+        const nav = navigator as Navigator & { deviceMemory?: number; connection?: { saveData?: boolean } };
+        // Very constrained devices (≤2 GB RAM) or Data Saver get the static illustration instead of WebGL.
+        if (nav.connection?.saveData || (nav.deviceMemory !== undefined && nav.deviceMemory <= 2)) return setMode('fallback');
+        const low = matchMedia('(pointer: coarse)').matches || window.innerWidth < 820 || (nav.deviceMemory !== undefined && nav.deviceMemory <= 4)
+          || (navigator.hardwareConcurrency !== undefined && navigator.hardwareConcurrency <= 4);
         try {
           scene = new mod.ChargingScene({ canvas, quality: low ? 'low' : 'high', theme: currentTheme(), reducedMotion: prefersReducedMotion(), modelUrl, useModel: true });
         } catch (err) {

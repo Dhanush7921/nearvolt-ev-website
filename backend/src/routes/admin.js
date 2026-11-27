@@ -53,6 +53,30 @@ export function adminRoutes({ db, auth, fileStore, settings, notify, sheetsClien
     } catch (e) { next(e); }
   });
 
+  // Daily request funnel for charts. Count aggregations only (≈1 read per 1000 matches) and a 60 s cache: free-tier friendly.
+  let analyticsCache = { key: null, at: 0, v: null };
+  r.get('/analytics', async (req, res, next) => {
+    try {
+      const days = Math.min(30, Math.max(7, Number.parseInt(req.query.days, 10) || 14));
+      if (analyticsCache.key === days && Date.now() - analyticsCache.at < 60e3) return ok(res, analyticsCache.v);
+      const IST = 5.5 * 3600e3, DAY = 86400e3;
+      const today = Math.floor((Date.now() + IST) / DAY) * DAY - IST; // start of today in India time
+      const col = db.collection('requests');
+      const c = async (q) => (await q.count().get()).data().count;
+      const series = await Promise.all(Array.from({ length: days }, async (_, i) => {
+        const from = new Date(today - (days - 1 - i) * DAY), to = new Date(from.getTime() + DAY);
+        const inDay = (q) => q.where('createdAt', '>=', from).where('createdAt', '<', to);
+        const [created, completed, lost] = await Promise.all([c(inDay(col)), c(inDay(col.where('status', '==', 'COMPLETED'))),
+          c(inDay(col.where('status', 'in', ['EXPIRED', 'REJECTED', 'CANCELLED'])))]);
+        return { date: new Date(from.getTime() + IST).toISOString().slice(0, 10), created, completed, lost };
+      }));
+      const tot = series.reduce((a, d) => ({ created: a.created + d.created, completed: a.completed + d.completed, lost: a.lost + d.lost }), { created: 0, completed: 0, lost: 0 });
+      const v = { days, series, totals: tot, completionRate: tot.created ? Math.round((tot.completed / tot.created) * 1000) / 10 : null, generatedAt: new Date().toISOString() };
+      analyticsCache = { key: days, at: Date.now(), v };
+      ok(res, v);
+    } catch (e) { next(e); }
+  });
+
   r.get('/users', validate(listQuery, 'query'), async (req, res, next) => {
     try {
       const col = db.collection('users');

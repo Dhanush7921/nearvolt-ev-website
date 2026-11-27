@@ -46,6 +46,9 @@ test('auth required, bad tokens rejected, users cannot self-assign admin', async
   await request(app).post('/api/v1/me/role').set(bearer(T.c1)).send({ role: 'host' }).expect(409); // role locked
   await request(app).get('/api/v1/admin/overview').set(bearer(T.c1)).expect(403);
   await request(app).get('/api/v1/admin/overview').set(bearer(T.admin)).expect(200);
+  await request(app).get('/api/v1/admin/analytics').set(bearer(T.c1)).expect(403);
+  const an = await request(app).get('/api/v1/admin/analytics?days=7').set(bearer(T.admin)).expect(200);
+  assert.equal(an.body.data.series.length, 7); assert.match(an.body.data.series[6].date, /^\d{4}-\d{2}-\d{2}$/);
 });
 
 test('admin MFA is enforced when required', async () => {
