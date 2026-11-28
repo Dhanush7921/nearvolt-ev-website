@@ -316,7 +316,7 @@ fun ConnectorPicker(value: String?, onChange: (String) -> Unit, allowAny: Boolea
 @Composable
 fun SplashScreen() {
     var slow by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { delay(6_000); slow = true }
+    LaunchedEffect(Unit) { delay(2_000); slow = true }
     Box(Modifier.fillMaxSize().background(com.nearvolt.ev.ui.theme.Brand.heroGradient), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             com.nearvolt.ev.ui.components.LogoReveal(size = 112.dp, loop = true)

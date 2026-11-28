@@ -15,9 +15,10 @@ class MainActivity : ComponentActivity() {
     private val vm: AppViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        val splash = installSplashScreen()
+        installSplashScreen()
         super.onCreate(savedInstanceState)
-        splash.setKeepOnScreenCondition { vm.state.value.loading }
+        // Let the system splash hand off to Compose; the existing animated Loading screen
+        // remains visible until server/authentication/maintenance checks finish.
         enableEdgeToEdge()
         handle(intent)
         setContent { NearVoltRoot(vm) }

@@ -1,5 +1,8 @@
 package com.nearvolt.ev.ui.screens
 
+import android.Manifest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
@@ -64,14 +67,23 @@ const val PRIMARY_LOCAL_ID = "server-primary"
 @Composable
 fun HomeScreen(app: AppViewModel, openMap: () -> Unit, openFind: () -> Unit, openGarage: () -> Unit, openFavourites: () -> Unit, openSafety: () -> Unit,
                openEmergency: () -> Unit, openAlerts: () -> Unit, openAccount: () -> Unit, openRequest: (String) -> Unit, openActivity: () -> Unit,
-               vm: HomeViewModel = viewModel()) {
+               vm: HomeViewModel = viewModel(), locationVm: FindViewModel = viewModel(key = "home-location")) {
     val s by vm.state.collectAsStateWithLifecycle()
     val appState by app.state.collectAsStateWithLifecycle()
     val me = appState.me ?: return
     val c = NearVoltApp.instance.container
     val local by remember(me.uid) { c.accountStore.data(me.uid) }.collectAsStateWithLifecycle(LocalAccountData())
     val disco by c.discovery.collectAsStateWithLifecycle()
-    LaunchedEffect(Unit) { vm.load() }
+    val locationState by locationVm.state.collectAsStateWithLifecycle()
+    var showLocation by remember { mutableStateOf(false) }
+    var manualOpen by remember { mutableStateOf(false) }
+    LaunchedEffect(me.uid) { vm.load(); locationVm.init(me, null, loadActiveRequests = false) }
+    val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { locationVm.locate() }
+    val locate: () -> Unit = {
+        if (c.location.hasFine() || c.location.hasCoarse()) { locationVm.locate(); Unit }
+        else permission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+    }
+    if (manualOpen) ManualLocationDialog(onDismiss = { manualOpen = false }) { manualOpen = false; locationVm.manual(it) }
     val first = me.name.trim().split(' ').firstOrNull().orEmpty()
     val primaryLocal = local.garage.firstOrNull { it.id == PRIMARY_LOCAL_ID }
 
@@ -94,9 +106,30 @@ fun HomeScreen(app: AppViewModel, openMap: () -> Unit, openFind: () -> Unit, ope
             Text(stringResource(R.string.home_ready), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(10.dp))
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                AssistChip(onClick = openMap, label = { Text(disco.fix?.label ?: stringResource(R.string.home_set_location), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                AssistChip(onClick = { showLocation = !showLocation }, label = { Text(disco.fix?.label ?: stringResource(R.string.home_set_location), maxLines = 1, overflow = TextOverflow.Ellipsis) },
                     leadingIcon = { Icon(Icons.Outlined.LocationOn, null, Modifier.size(18.dp)) }, modifier = Modifier.weight(1f, fill = false))
                 ServerStatusChip(appState.config != null, s.offline)
+            }
+        }
+        if (showLocation || disco.fix == null) item(key = "locationPanel") {
+            GlassCard {
+                Text(stringResource(R.string.find_start_title), style = MaterialTheme.typography.titleMedium)
+                Text(disco.fix?.label ?: stringResource(R.string.find_start_body), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = locate, enabled = !locationState.locating, modifier = Modifier.weight(1f)) {
+                        if (locationState.locating) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp) else Text(stringResource(R.string.find_use_location))
+                    }
+                    OutlinedButton(onClick = { manualOpen = true }, enabled = !locationState.locating, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.find_enter_location)) }
+                }
+                when (locationState.locationIssue) {
+                    "DENIED" -> InlineMessage(stringResource(R.string.find_issue_denied))
+                    "OFF" -> InlineMessage(stringResource(R.string.find_issue_off))
+                    "UNAVAILABLE" -> InlineMessage(stringResource(R.string.find_issue_unavailable))
+                    "MANUAL_FAILED" -> InlineMessage(stringResource(R.string.find_issue_manual))
+                    "OUTSIDE" -> InlineMessage(stringResource(R.string.find_issue_outside))
+                }
+                if (disco.fix != null) TextButton(onClick = openMap) { Text(stringResource(R.string.tab_map)) }
             }
         }
         item(key = "vehicle") { VehicleCard(me.vehicle, primaryLocal, openGarage) }

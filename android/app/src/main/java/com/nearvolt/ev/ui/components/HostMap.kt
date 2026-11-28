@@ -53,7 +53,7 @@ fun rememberReducedMotion(): Boolean {
 @SuppressLint("ClickableViewAccessibility")
 @Composable
 fun HostMap(hosts: List<HostSummary>, me: ApiLatLng?, selectedId: String?, dark: Boolean, onSelect: (HostSummary) -> Unit, modifier: Modifier = Modifier,
-            fullScreen: Boolean = false, recenterKey: Int = 0, onFailed: () -> Unit = {}) {
+            fullScreen: Boolean = false, recenterKey: Int = 0, initialCenter: ApiLatLng? = null, onFailed: () -> Unit = {}) {
     val ctx = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val reduced = rememberReducedMotion()
@@ -74,7 +74,7 @@ fun HostMap(hosts: List<HostSummary>, me: ApiLatLng?, selectedId: String?, dark:
             getMapAsync { m ->
                 m.uiSettings.isRotateGesturesEnabled = fullScreen; m.uiSettings.isTiltGesturesEnabled = false
                 m.uiSettings.isCompassEnabled = fullScreen
-                if (fullScreen) { val d = ctx.resources.displayMetrics.density; m.uiSettings.setCompassMargins(0, (150 * d).toInt(), (16 * d).toInt(), 0) }
+                if (fullScreen) { val d = ctx.resources.displayMetrics.density; m.uiSettings.setCompassMargins(0, (12 * d).toInt(), (16 * d).toInt(), 0) }
                 m.addOnMapClickListener { pt ->
                     val screen = m.projection.toScreenLocation(pt)
                     // Tapping a cluster zooms in to reveal its hosts.
@@ -112,6 +112,7 @@ fun HostMap(hosts: List<HostSummary>, me: ApiLatLng?, selectedId: String?, dark:
             Feature.fromGeometry(Point.fromLngLat(a.lng, a.lat)).apply { addStringProperty("id", h.hostId); addBooleanProperty("bookable", h.bookableNow) } } }
         s.getSourceAs<GeoJsonSource>(SRC_HOSTS)?.setGeoJson(FeatureCollection.fromFeatures(feats))
         s.getSourceAs<GeoJsonSource>(SRC_ME)?.setGeoJson(FeatureCollection.fromFeatures(listOfNotNull(me?.let { Feature.fromGeometry(Point.fromLngLat(it.lng, it.lat)) })))
+        if (fullScreen) return@LaunchedEffect // filter refreshes must not reset the user's camera
         val pts = feats.map { (it.geometry() as Point).let { p -> LatLng(p.latitude(), p.longitude()) } } + listOfNotNull(me?.let { LatLng(it.lat, it.lng) })
         val update = when {
             pts.size >= 2 -> CameraUpdateFactory.newLatLngBounds(LatLngBounds.Builder().includes(pts).build(), 72)
@@ -119,6 +120,12 @@ fun HostMap(hosts: List<HostSummary>, me: ApiLatLng?, selectedId: String?, dark:
             else -> return@LaunchedEffect
         }
         if (reduced) m.moveCamera(update) else m.easeCamera(update, 700)
+    }
+    // Full-screen camera is centered only on initial style/location changes, not host/filter refreshes.
+    LaunchedEffect(style, me, initialCenter, fullScreen) {
+        if (!fullScreen || style == null) return@LaunchedEffect
+        val p = me ?: initialCenter ?: return@LaunchedEffect
+        map?.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(p.lat, p.lng), if (me == null) 10.5 else 13.5))
     }
     LaunchedEffect(recenterKey) {
         if (recenterKey == 0) return@LaunchedEffect

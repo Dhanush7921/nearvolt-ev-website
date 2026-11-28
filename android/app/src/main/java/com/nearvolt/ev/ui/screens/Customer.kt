@@ -38,6 +38,8 @@ import com.nearvolt.ev.util.Time
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.isActive
 import java.util.UUID
 
 data class FindState(
@@ -51,43 +53,66 @@ class FindViewModel : ViewModel() {
     private val c = NearVoltApp.instance.container
     val state = MutableStateFlow(FindState())
     private var createKey: String? = null
+    private var searchJob: Job? = null
+    private var initialized = false
 
-    fun init(me: Me?, exclude: String?) {
-        if (state.value.vehicleType == null) state.update { it.copy(vehicleType = me?.vehicle?.type, connector = me?.vehicle?.connector) }
+    fun init(me: Me?, exclude: String?, loadActiveRequests: Boolean = true) {
+        if (!initialized) {
+            state.update { it.copy(vehicleType = me?.vehicle?.type, connector = me?.vehicle?.connector) }
+            initialized = true
+        }
         exclude?.let { e -> state.update { it.copy(exclude = e.split(',').filter(String::isNotBlank)) } }
-        loadActive()
+        if (loadActiveRequests) loadActive()
     }
     fun loadActive() = viewModelScope.launch {
         (c.repo.requests("customer", activeOnly = true) as? ApiResult.Ok)?.let { r -> state.update { it.copy(active = r.value.items.firstOrNull()) } }
     }
     fun locate() = viewModelScope.launch {
+        if (state.value.locating) return@launch
         state.update { it.copy(locating = true, locationIssue = null) }
         when (val r = c.location.current()) {
-            is LocationResult.Found -> { state.update { it.copy(fix = r.fix, locating = false) }; c.discovery.update { it.copy(fix = r.fix) }; search() }
+            is LocationResult.Found -> { state.update { it.copy(fix = r.fix, locating = false) }; c.discovery.update { it.copy(fix = r.fix, nearby = null, at = 0) }; search() }
             LocationResult.PermissionDenied -> state.update { it.copy(locating = false, locationIssue = "DENIED") }
             LocationResult.ServicesOff -> state.update { it.copy(locating = false, locationIssue = "OFF") }
             LocationResult.Unavailable -> state.update { it.copy(locating = false, locationIssue = "UNAVAILABLE") }
         }
     }
     fun manual(input: String) = viewModelScope.launch {
+        if (state.value.locating) return@launch
         state.update { it.copy(locating = true, locationIssue = null) }
-        val f = c.location.resolveManual(input)
+        val f = kotlinx.coroutines.withTimeoutOrNull(15_000) { c.location.resolveManual(input) }
         if (f == null) state.update { it.copy(locating = false, locationIssue = "MANUAL_FAILED") } else {
-            state.update { it.copy(fix = f, locating = false) }; c.discovery.update { it.copy(fix = f) }
+            state.update { it.copy(fix = f, locating = false) }; c.discovery.update { it.copy(fix = f, nearby = null, at = 0) }
             c.auth.currentUser?.uid?.let { uid -> c.accountStore.update(uid) { d -> com.nearvolt.ev.data.prefs.LocalRules.addRecent(d, input, System.currentTimeMillis()) } }
             search()
         }
     }
     fun setFilters(vehicleType: String?, connector: String?) { state.update { it.copy(vehicleType = vehicleType, connector = connector?.ifBlank { null }) }; search() }
-    fun search() = viewModelScope.launch {
-        val s = state.value
-        val fix = s.fix ?: return@launch
-        state.update { it.copy(loading = true, error = null) }
-        when (val r = c.repo.nearby(fix.point, s.radiusKm, s.connector, s.vehicleType, s.exclude)) {
-            is ApiResult.Ok -> { state.update { it.copy(loading = false, result = r.value, locationIssue = if (r.value.serviceArea == null) "OUTSIDE" else null) }
-                c.discovery.update { it.copy(nearby = r.value, at = System.currentTimeMillis()) } }
-            is ApiResult.Err -> state.update { it.copy(loading = false, error = r) }
+    /** Apply server-side filters atomically and perform one search. */
+    fun applyMapFilters(vehicleType: String?, connector: String?, radiusKm: Double) {
+        state.update { it.copy(vehicleType = vehicleType, connector = connector?.ifBlank { null }, radiusKm = radiusKm.coerceIn(1.0, 50.0)) }
+        search()
+    }
+    fun search(): Job {
+        searchJob?.cancel()
+        val job = viewModelScope.launch {
+            val s = state.value
+            val fix = s.fix ?: return@launch
+            val uid = c.auth.currentUser?.uid ?: return@launch
+            state.update { it.copy(loading = true, error = null, result = null) }
+            c.discovery.update { if (it.fix == fix) it.copy(nearby = null, at = 0) else it }
+            val r = c.repo.nearby(fix.point, s.radiusKm, s.connector, s.vehicleType, s.exclude)
+            if (!isActive || c.auth.currentUser?.uid != uid) return@launch
+            when (r) {
+                is ApiResult.Ok -> {
+                    state.update { it.copy(loading = false, result = r.value, locationIssue = if (r.value.serviceArea == null) "OUTSIDE" else null) }
+                    c.discovery.update { if (it.fix == fix) it.copy(nearby = r.value, at = System.currentTimeMillis()) else it }
+                }
+                is ApiResult.Err -> state.update { it.copy(loading = false, error = r) }
+            }
         }
+        searchJob = job
+        return job
     }
     fun create(host: HostSummary, note: String?, battery: Int?, onCreated: (String) -> Unit) = viewModelScope.launch {
         val s = state.value
@@ -104,7 +129,13 @@ class FindViewModel : ViewModel() {
     /** Server accepts 0.5–50 km (nearbyQuery schema); the UI clamps to that range. */
     fun setRadius(km: Double) { state.update { it.copy(radiusKm = km.coerceIn(1.0, 50.0)) }; search() }
     /** Reuse the session's last fix (in-memory only) so Map/Home/Emergency don't re-ask for GPS on every visit. */
-    fun adoptCachedFix() { val snap = c.discovery.value; if (state.value.fix == null && snap.fix != null) { state.update { it.copy(fix = snap.fix, result = snap.nearby) }; search() } }
+    fun adoptCachedFix() {
+        val snap = c.discovery.value
+        if (snap.fix != null && state.value.fix != snap.fix) {
+            state.update { it.copy(fix = snap.fix, result = null) }
+            search()
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

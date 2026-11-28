@@ -43,10 +43,13 @@ object ApiClient {
         // (publicRoutes are mounted without authenticate()). Skipping the token waits shortens cold start; protected routes are unchanged.
         val isPublic = chain.request().url.encodedPath.startsWith("/api/v1/public/")
         if (firebaseReady() && !isPublic) {
-            FirebaseAuth.getInstance().currentUser?.let { u ->
-                runCatching { Tasks.await(u.getIdToken(false), 10, TimeUnit.SECONDS).token }.getOrNull()?.let { b.header("Authorization", "Bearer $it") }
+            // Start independent token requests together, preserving each protected header and its existing timeout.
+            val idTask = runCatching { FirebaseAuth.getInstance().currentUser?.getIdToken(false) }.getOrNull()
+            val checkTask = runCatching { FirebaseAppCheck.getInstance().getAppCheckToken(false) }.getOrNull()
+            idTask?.let { task ->
+                runCatching { Tasks.await(task, 10, TimeUnit.SECONDS).token }.getOrNull()?.let { b.header("Authorization", "Bearer $it") }
             }
-            runCatching { Tasks.await(FirebaseAppCheck.getInstance().getAppCheckToken(false), 10, TimeUnit.SECONDS).token }
+            runCatching { checkTask?.let { Tasks.await(it, 10, TimeUnit.SECONDS).token } }
                 .onFailure { android.util.Log.w("NearVoltAppCheck", "App Check token unavailable: ${it.message}") }
                 .getOrNull()?.let { b.header("X-Firebase-AppCheck", it) }
         }

@@ -8,6 +8,8 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -50,7 +52,7 @@ data class MapFilters(val availableOnly: Boolean = false, val power: String = "a
  * (same authorized /hosts/nearby endpoint, same request creation flow). The map composes only while this tab is visible and
  * is destroyed when the user leaves it (HostMap's lifecycle observer), so no tiles load in the background.
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun MapScreen(app: AppViewModel, openRequest: (String) -> Unit, openEmergency: () -> Unit, openAlerts: () -> Unit, vm: FindViewModel = viewModel(key = "map")) {
     val appState by app.state.collectAsStateWithLifecycle()
@@ -69,37 +71,17 @@ fun MapScreen(app: AppViewModel, openRequest: (String) -> Unit, openEmergency: (
     LaunchedEffect(Unit) { vm.init(appState.me, null); vm.adoptCachedFix() }
     val perm = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { vm.locate() }
     val locate: () -> Unit = {
-        if (c.location.hasFine() || c.location.hasCoarse()) { if (s.fix != null) recenter++ ; vm.locate() }
+        if (c.location.hasFine() || c.location.hasCoarse()) { vm.locate(); Unit }
         else perm.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
     }
-    val hosts = filters.apply(s.result?.items.orEmpty())
+    val hosts = remember(filters, s.result) { filters.apply(s.result?.items.orEmpty()) }
+    val initialCenter = appState.config?.serviceAreas?.firstOrNull()?.center
     val dark = isDarkSurface()
     val showList = listMode || mapFailed
 
-    Box(Modifier.fillMaxSize()) {
-        // ---- Map or list body ----
-        AnimatedContent(showList, transitionSpec = { fadeIn() togetherWith fadeOut() }, label = "mapList", modifier = Modifier.fillMaxSize()) { list ->
-            if (!list) {
-                if (s.fix != null) HostMap(hosts, s.fix?.point, selected?.hostId, dark, onSelect = { selected = it }, modifier = Modifier.fillMaxSize(),
-                    fullScreen = true, recenterKey = recenter, onFailed = { mapFailed = true })
-                else Box(Modifier.fillMaxSize().ambient(), contentAlignment = Alignment.Center) { EvIllustration(Modifier.padding(32.dp), charging = false, height = 160.dp) }
-            } else {
-                LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 190.dp, bottom = 120.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    if (mapFailed) item { InlineMessage(stringResource(R.string.map_failed_list)) }
-                    when {
-                        s.loading && s.result == null -> item { SkeletonList(4) }
-                        s.error != null -> item { ErrorState(s.error!!) { vm.search() } }
-                        s.fix != null && hosts.isEmpty() -> item { EmptyState(stringResource(R.string.find_empty_title), stringResource(if (filters.active) R.string.map_empty_filtered else R.string.find_empty_body)) }
-                        else -> items(hosts, key = { it.hostId }) { h ->
-                            Box(Modifier.animateItem()) { HostCard(h) { selected = h } }
-                        }
-                    }
-                }
-            }
-        }
-
+    Column(Modifier.fillMaxSize()) {
         // ---- Top glass controls ----
-        Column(Modifier.fillMaxWidth().statusBarsPadding().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             GlassCard(overMap = true) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     LeadingBadge(Icons.Outlined.Map, Tone.Good, 36.dp); Spacer(Modifier.width(10.dp))
@@ -111,29 +93,61 @@ fun MapScreen(app: AppViewModel, openRequest: (String) -> Unit, openEmergency: (
                     IconButton(onClick = openAlerts) { Icon(Icons.Outlined.Notifications, stringResource(R.string.tab_alerts)) }
                 }
             }
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                item {
-                    SingleChoiceSegmentedButtonRow {
-                        SegmentedButton(!showList, { listMode = false; mapFailed = false }, SegmentedButtonDefaults.itemShape(0, 2), icon = {}) { Icon(Icons.Outlined.Map, null, Modifier.size(16.dp)); Spacer(Modifier.width(4.dp)); Text(stringResource(R.string.map_tab)) }
-                        SegmentedButton(showList, { listMode = true }, SegmentedButtonDefaults.itemShape(1, 2), icon = {}) { Icon(Icons.Outlined.List, null, Modifier.size(16.dp)); Spacer(Modifier.width(4.dp)); Text(stringResource(R.string.map_list)) }
+            SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                SegmentedButton(!showList, { listMode = false; mapFailed = false }, SegmentedButtonDefaults.itemShape(0, 2), icon = {}) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Icon(Icons.Outlined.Map, null, Modifier.size(16.dp))
+                        Text(stringResource(R.string.map_tab))
                     }
                 }
-                item { FilterChip(s.vehicleType != null || s.connector != null || filters.active, { filterSheet = true }, label = { Text(stringResource(R.string.map_filters)) },
-                    leadingIcon = { Icon(Icons.Outlined.Tune, null, Modifier.size(18.dp)) }) }
-                item { FilterChip(filters.availableOnly, { filters = filters.copy(availableOnly = !filters.availableOnly) }, label = { Text(stringResource(R.string.map_available)) }) }
-                item { AssistChip({ filterSheet = true }, label = { Text(stringResource(R.string.map_radius, s.radiusKm.toInt())) }) }
+                SegmentedButton(showList, { listMode = true }, SegmentedButtonDefaults.itemShape(1, 2), icon = {}) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Icon(Icons.Outlined.List, null, Modifier.size(16.dp))
+                        Text(stringResource(R.string.map_list))
+                    }
+                }
+            }
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(s.vehicleType != null || s.connector != null || filters.active, { filterSheet = true }, label = { Text(stringResource(R.string.map_filters)) },
+                    leadingIcon = { Icon(Icons.Outlined.Tune, null, Modifier.size(18.dp)) })
+                FilterChip(filters.availableOnly, { filters = filters.copy(availableOnly = !filters.availableOnly) }, label = { Text(stringResource(R.string.map_available)) })
+                AssistChip({ filterSheet = true }, label = { Text(stringResource(R.string.map_radius, s.radiusKm.toInt())) })
+            }
+        }
+
+        Box(Modifier.weight(1f).fillMaxWidth()) {
+        // ---- Map or list body ----
+        AnimatedContent(showList, transitionSpec = { fadeIn() togetherWith fadeOut() }, label = "mapList", modifier = Modifier.fillMaxSize()) { list ->
+            if (!list) {
+                if (s.fix != null || initialCenter != null) HostMap(hosts, s.fix?.point, selected?.hostId, dark, onSelect = { selected = it }, modifier = Modifier.fillMaxSize(),
+                    fullScreen = true, recenterKey = recenter, initialCenter = initialCenter, onFailed = { mapFailed = true })
+                else Box(Modifier.fillMaxSize().ambient(), contentAlignment = Alignment.Center) { EvIllustration(Modifier.padding(32.dp), charging = false, height = 160.dp) }
+            } else {
+                LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    if (mapFailed) item { InlineMessage(stringResource(R.string.map_failed_list)) }
+                    when {
+                        s.loading && s.result == null -> item { SkeletonList(4) }
+                        s.error != null -> item { ErrorState(s.error!!) { vm.search() } }
+                        s.fix != null && hosts.isEmpty() -> item { EmptyState(stringResource(R.string.find_empty_title), stringResource(if (filters.active) R.string.map_empty_filtered else R.string.find_empty_body)) }
+                        s.fix == null -> item { EmptyState(stringResource(R.string.find_start_title), stringResource(R.string.find_start_body)) }
+                        else -> items(hosts, key = { it.hostId }) { h ->
+                            Box(Modifier.animateItem()) { HostCard(h) { selected = h } }
+                        }
+                    }
+                }
             }
         }
 
         // ---- Right controls ----
-        Column(Modifier.align(Alignment.CenterEnd).padding(end = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            SmallFloatingActionButton(onClick = locate, containerColor = MaterialTheme.colorScheme.surface) {
+        if (!showList) Column(Modifier.align(Alignment.CenterEnd).padding(end = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            SmallFloatingActionButton(onClick = { if (s.fix != null) recenter++ else if (!s.locating) locate() }, containerColor = MaterialTheme.colorScheme.surface) {
                 if (s.locating) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp) else Icon(Icons.Outlined.MyLocation, stringResource(R.string.map_recenter))
             }
         }
 
+        }
         // ---- Bottom summary ----
-        Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             GlassCard(overMap = true) {
                 when {
                     s.fix == null -> {
@@ -141,12 +155,17 @@ fun MapScreen(app: AppViewModel, openRequest: (String) -> Unit, openEmergency: (
                         Text(stringResource(R.string.find_start_body), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(Modifier.height(8.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(onClick = locate, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.find_use_location)) }
-                            OutlinedButton(onClick = { manualOpen = true }, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.find_enter_location)) }
+                            Button(onClick = locate, enabled = !s.locating, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.find_use_location)) }
+                            OutlinedButton(onClick = { manualOpen = true }, enabled = !s.locating, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.find_enter_location)) }
                         }
-                        s.locationIssue?.let { InlineMessage(stringResource(R.string.find_issue_unavailable)) }
+                        when (s.locationIssue) {
+                            "DENIED" -> InlineMessage(stringResource(R.string.find_issue_denied))
+                            "OFF" -> InlineMessage(stringResource(R.string.find_issue_off))
+                            "UNAVAILABLE" -> InlineMessage(stringResource(R.string.find_issue_unavailable))
+                            "MANUAL_FAILED" -> InlineMessage(stringResource(R.string.find_issue_manual))
+                        }
                     }
-                    s.error != null && s.error!!.isOffline -> Text(stringResource(R.string.state_offline_title), style = MaterialTheme.typography.titleSmall)
+                    s.error != null -> ErrorState(s.error!!) { vm.search() }
                     s.loading && s.result == null -> { Text(stringResource(R.string.map_loading), style = MaterialTheme.typography.titleSmall); Spacer(Modifier.height(6.dp)); EnergyFlowBar(Modifier.fillMaxWidth(), 4.dp) }
                     else -> {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -168,7 +187,9 @@ fun MapScreen(app: AppViewModel, openRequest: (String) -> Unit, openEmergency: (
 
     if (manualOpen) ManualLocationDialog(onDismiss = { manualOpen = false }) { manualOpen = false; vm.manual(it) }
     if (filterSheet) ModalBottomSheet(onDismissRequest = { filterSheet = false }) {
-        MapFilterSheet(s, filters, vm, onChange = { filters = it }, onClose = { filterSheet = false })
+        MapFilterSheet(s, filters, onApply = { v, connector, radius, f ->
+            selected = null; filters = f; vm.applyMapFilters(v, connector, radius); filterSheet = false
+        })
     }
     selected?.let { h ->
         val fav = local.favourites.any { it.hostId == h.hostId }
@@ -183,31 +204,37 @@ fun MapScreen(app: AppViewModel, openRequest: (String) -> Unit, openEmergency: (
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun MapFilterSheet(s: FindState, f: MapFilters, vm: FindViewModel, onChange: (MapFilters) -> Unit, onClose: () -> Unit) {
+private fun MapFilterSheet(s: FindState, f: MapFilters, onApply: (String?, String?, Double, MapFilters) -> Unit) {
     var radius by remember { mutableFloatStateOf(s.radiusKm.toFloat()) }
-    Column(Modifier.padding(horizontal = 24.dp).padding(bottom = 32.dp).navigationBarsPadding(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    var vehicle by remember { mutableStateOf(s.vehicleType) }
+    var connector by remember { mutableStateOf(s.connector) }
+    var draft by remember { mutableStateOf(f) }
+    Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 24.dp).padding(bottom = 24.dp).navigationBarsPadding(),
+        verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(stringResource(R.string.map_filter_title), style = MaterialTheme.typography.headlineSmall)
         Text(stringResource(R.string.field_vehicles), style = MaterialTheme.typography.titleSmall)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilterChip(s.vehicleType == null, { vm.setFilters(null, s.connector) }, label = { Text(stringResource(R.string.filter_any_vehicle)) })
-            VehicleTypes.ALL.forEach { t -> FilterChip(s.vehicleType == t, { vm.setFilters(t, s.connector) }, label = { Text(Labels.vehicle(t)) }) }
+            FilterChip(vehicle == null, { vehicle = null }, label = { Text(stringResource(R.string.filter_any_vehicle)) })
+            VehicleTypes.ALL.forEach { t -> FilterChip(vehicle == t, { vehicle = t }, label = { Text(Labels.vehicle(t)) }) }
         }
         Text(stringResource(R.string.field_connector), style = MaterialTheme.typography.titleSmall)
-        ConnectorPicker(s.connector, { vm.setFilters(s.vehicleType, it) }, allowAny = true)
+        ConnectorPicker(connector, { connector = it }, allowAny = true)
         Text(stringResource(R.string.detail_power), style = MaterialTheme.typography.titleSmall)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("any" to "Any", "le7" to "≤ 7 kW", "7to22" to "7–22 kW", "gt22" to "> 22 kW").forEach { (k, l) -> FilterChip(f.power == k, { onChange(f.copy(power = k)) }, label = { Text(l) }) }
+            listOf("any" to "Any", "le7" to "≤ 7 kW", "7to22" to "7–22 kW", "gt22" to "> 22 kW").forEach { (k, l) ->
+                FilterChip(draft.power == k, { draft = draft.copy(power = k) }, label = { Text(l) })
+            }
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.map_available_only), style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
-            Switch(f.availableOnly, { onChange(f.copy(availableOnly = it)) })
+            Switch(draft.availableOnly, { draft = draft.copy(availableOnly = it) })
         }
         Text(stringResource(R.string.map_radius, radius.toInt()), style = MaterialTheme.typography.titleSmall)
-        Slider(radius, { radius = it }, valueRange = 1f..50f, steps = 48, onValueChangeFinished = { vm.setRadius(radius.toDouble()) })
+        Slider(radius, { radius = it }, valueRange = 1f..50f, steps = 48)
         Text(stringResource(R.string.find_straight_line_note), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = { onChange(MapFilters()); vm.setFilters(null, null) }, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.action_reset)) }
-            Button(onClick = onClose, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.action_done)) }
+            OutlinedButton(onClick = { draft = MapFilters(); vehicle = null; connector = null; radius = 10f }, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.action_reset)) }
+            Button(onClick = { onApply(vehicle, connector, radius.toDouble(), draft) }, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.action_done)) }
         }
     }
 }
