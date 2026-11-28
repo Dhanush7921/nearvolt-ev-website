@@ -30,8 +30,31 @@ The shared design layer is `src/styles/premium.css`, which is additive. It holds
 - Firebase, App Check, Firestore rules, admin MFA and backend rate limits are unchanged.
 - `npm audit`: 0 vulnerabilities (production and dev).
 
-## 4. Verification results
-_Filled from real runs — see the bottom of this file._
+## 4. Verification results (28 Nov 2026, this container)
+| Check | Result |
+|---|---|
+| `npm run typecheck` | Pass, 0 errors |
+| `npm run build` | Pass. Main JS 271 → ~294 kB minified, CSS 66 → ~107 kB; new pages are lazy-loaded chunks |
+| `npm run verify` (Playwright, production build) | **218 / 218 pass**. Includes 27 new V1.2 checks: menu morph, Escape, outside click, keyboard, links; Find Charging live check, unknown place, 112; sign-in has no fake success and OTP is disabled; dashboard empty states; contact validation, no fake confirmation, 112; mobile overflow and menu. Also all existing 3D, intro, reduced-motion, no-WebGL, theme, form and navigation checks |
+| Responsive sweep: 320, 360, 390, 430, 768, 1024×768, 1024×600, 1440, 1920, 3840 px × 4 routes | No horizontal scroll. Two items from V1.1, left unchanged: the 3D HUD card sits 8 px past the edge at 320–360 px, and one Benefits word at 320 px |
+| Themes | Light and dark screenshots checked; system theme still followed until the user chooses |
+| Reduced motion | New sections render fully visible with no animation (0 hidden reveal items) |
+| `npm audit` | 0 vulnerabilities |
+| 3D regression | Same verify scene checks as V1.1 pass; `src/three`, intro and media are unchanged |
+
+**Performance (lab, Playwright + Performance APIs; software WebGL, so real devices will differ):**
+| Page | Mobile LCP | Mobile CLS | Desktop LCP | Desktop CLS | V1.1 desktop CLS |
+|---|---|---|---|---|---|
+| Home | 2.8 s (3D page; V1.1: 2.5 s) | 0.000 | 2.3 s (V1.1: 3.6 s) | 0.003 | 0.004 |
+| Contact | 1.5 s | 0.000 | 0.5 s | **0.000** | 0.163 |
+| Safety | 1.6 s | 0.000 | 1.6 s | **0.000** | 0.200 |
+| Sign-in | 1.2 s | 0.000 | 0.5 s | 0.000 | new |
+| Dashboard | 0.5 s | 0.000 | 0.5 s | 0.001 | new |
+
+- Interaction latency for menu clicks: 32–190 ms on secondary pages. The home page is higher here only because this container renders WebGL on the CPU (V1.1 shows the same).
+- A CLS of about 0.2 on every secondary page in V1.1 came from the lazy-page placeholder letting the footer flash into view; it is fixed.
+- Phones no longer download the 1080p poster on /contact and /sign-in.
+- Lighthouse could not be run in this environment; run it on the deployed preview.
 
 ## 5. Skipped (would cost money) and remaining blockers
 | Item | Status |
