@@ -47,7 +47,12 @@ data class FindState(
     val loading: Boolean = false, val result: NearbyResponse? = null, val error: ApiResult.Err? = null,
     val vehicleType: String? = null, val connector: String? = null, val radiusKm: Double = 10.0, val exclude: List<String> = emptyList(),
     val active: ChargeRequest? = null, val creating: Boolean = false, val createError: String? = null,
-)
+    /** The user's own profile vehicle. Requests always use the user's vehicle, never a value copied from the host. */
+    val profileType: String? = null, val profileConnector: String? = null,
+) {
+    val requestType get() = vehicleType ?: profileType
+    val requestConnector get() = connector ?: profileConnector
+}
 
 class FindViewModel : ViewModel() {
     private val c = NearVoltApp.instance.container
@@ -58,7 +63,7 @@ class FindViewModel : ViewModel() {
 
     fun init(me: Me?, exclude: String?, loadActiveRequests: Boolean = true) {
         if (!initialized) {
-            state.update { it.copy(vehicleType = me?.vehicle?.type, connector = me?.vehicle?.connector) }
+            state.update { it.copy(vehicleType = me?.vehicle?.type, connector = me?.vehicle?.connector, profileType = me?.vehicle?.type, profileConnector = me?.vehicle?.connector) }
             initialized = true
         }
         exclude?.let { e -> state.update { it.copy(exclude = e.split(',').filter(String::isNotBlank)) } }
@@ -117,9 +122,11 @@ class FindViewModel : ViewModel() {
     fun create(host: HostSummary, note: String?, battery: Int?, onCreated: (String) -> Unit) = viewModelScope.launch {
         val s = state.value
         val fix = s.fix ?: return@launch
+        val type = s.requestType; val conn = s.requestConnector
+        if (type == null || conn == null || conn !in host.connectors || type !in host.vehicleTypes) { state.update { it.copy(createError = "Your vehicle's connector or type doesn't match this host.") }; return@launch }
         val key = createKey ?: UUID.randomUUID().toString().also { createKey = it }
         state.update { it.copy(creating = true, createError = null) }
-        val body = CreateRequestBody(host.hostId, s.vehicleType ?: host.vehicleTypes.first(), s.connector ?: host.connectors.first(), fix.point, true, note?.ifBlank { null }, battery)
+        val body = CreateRequestBody(host.hostId, type, conn, fix.point, true, note?.ifBlank { null }, battery)
         when (val r = c.repo.createRequest(body, key)) {
             is ApiResult.Ok -> { createKey = null; state.update { it.copy(creating = false, active = r.value) }; onCreated(r.value.id) }
             is ApiResult.Err -> { if (r.code != "OFFLINE") createKey = null; state.update { it.copy(creating = false, createError = r.message) }; if (r.code == "HOST_UNAVAILABLE") search() }
@@ -260,8 +267,19 @@ internal fun HostDetail(h: HostSummary, s: FindState, batterySupported: Boolean,
     var battery by remember { mutableFloatStateOf(20f) }
     var batteryConfirmed by remember { mutableStateOf(false) }
     var note by remember { mutableStateOf("") }
-    val connector = s.connector ?: h.connectors.firstOrNull().orEmpty()
-    val compatible = (s.connector == null || h.connectors.contains(s.connector)) && (s.vehicleType == null || h.vehicleTypes.contains(s.vehicleType))
+    // V1.3: an unknown vehicle connector/type is never treated as compatible (previously it fell back to the host's first connector).
+    val connector = s.requestConnector.orEmpty()
+    val profileKnown = s.requestConnector != null && s.requestType != null
+    val compatible = profileKnown && h.connectors.contains(s.requestConnector) && h.vehicleTypes.contains(s.requestType)
+    // Catalogue screening of the primary vehicle (if the user linked it to a catalogue configuration). INCOMPATIBLE blocks; anything else is advisory.
+    val c = com.nearvolt.ev.NearVoltApp.instance.container
+    val uid = c.auth.currentUser?.uid
+    val local by remember(uid) { if (uid != null) c.accountStore.data(uid) else kotlinx.coroutines.flow.flowOf(com.nearvolt.ev.data.prefs.LocalAccountData()) }
+        .collectAsStateWithLifecycle(com.nearvolt.ev.data.prefs.LocalAccountData())
+    val catId = local.garage.firstOrNull { it.id == PRIMARY_LOCAL_ID }?.catalogueId
+    var catalogue by remember { mutableStateOf(com.nearvolt.ev.catalogue.CatalogueRepo.peek()) }
+    LaunchedEffect(catId) { if (catId != null && catalogue == null) catalogue = runCatching { com.nearvolt.ev.catalogue.CatalogueRepo.load(com.nearvolt.ev.NearVoltApp.instance) }.getOrNull() }
+    val screening = catalogue?.vehicles?.firstOrNull { it.id == catId }?.let { com.nearvolt.ev.catalogue.CompatibilityEngine.screen(it, h.connectors, h.powerKw, h.chargerType) to it }
     Column(Modifier.padding(horizontal = 24.dp).padding(bottom = 32.dp).navigationBarsPadding(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             LeadingBadge(Icons.Outlined.EvStation, if (h.bookableNow) Tone.Good else Tone.Neutral, 48.dp); Spacer(Modifier.width(12.dp))
@@ -279,8 +297,21 @@ internal fun HostDetail(h: HostSummary, s: FindState, batterySupported: Boolean,
         DetailRow(stringResource(R.string.detail_connectors), h.connectors.joinToString { Labels.connector(it) })
         DetailRow(stringResource(R.string.detail_vehicles), h.vehicleTypes.joinToString { Labels.vehicle(it) })
         Text(stringResource(R.string.detail_privacy_note), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        screening?.let { (r, v) ->
+            GlassCard {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(stringResource(R.string.screen_title, v.model), style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                    StatusPill(stringResource(when (r.level) { com.nearvolt.ev.catalogue.CompatibilityEngine.Level.SCREENED_MATCH -> R.string.screen_match
+                        com.nearvolt.ev.catalogue.CompatibilityEngine.Level.UNVERIFIED -> R.string.screen_unverified; else -> R.string.screen_incompatible }),
+                        when (r.level) { com.nearvolt.ev.catalogue.CompatibilityEngine.Level.SCREENED_MATCH -> Tone.Good; com.nearvolt.ev.catalogue.CompatibilityEngine.Level.UNVERIFIED -> Tone.Warn; else -> Tone.Bad })
+                }
+                r.reasons.forEach { Text("• $it", style = MaterialTheme.typography.bodySmall) }
+            }
+        }
         if (!h.bookableNow) InlineMessage(stringResource(R.string.detail_not_bookable))
+        else if (!profileKnown) InlineMessage(stringResource(R.string.detail_profile_needed))
         else if (!compatible) InlineMessage(stringResource(R.string.detail_incompatible))
+        else if (screening?.first?.blocksRequest == true) InlineMessage(stringResource(R.string.screen_blocks))
         else {
             OutlinedTextField(note, { note = it.take(300) }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.field_note_optional)) }, maxLines = 3)
             if (batterySupported) {

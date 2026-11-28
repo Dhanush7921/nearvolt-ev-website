@@ -159,7 +159,14 @@ fun RequestScreen(id: String, onBack: () -> Unit, findAlternatives: (String) -> 
         var reason by remember { mutableStateOf("") }
         AlertDialog(onDismissRequest = { confirm = null },
             title = { Text(stringResource(when (a) { "reject" -> R.string.confirm_reject; "dispute" -> R.string.confirm_dispute; else -> R.string.confirm_cancel })) },
-            text = { OutlinedTextField(reason, { reason = it.take(300) }, label = { Text(stringResource(R.string.field_reason_optional)) }) },
+            text = { Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                // V1.3: one-tap reasons (sent as the existing optional `reason` text; no backend change).
+                val presets = when (a) { "cancel" -> listOf("Found charging elsewhere", "Host is too far", "Plans changed", "Vehicle issue", "Waited too long")
+                    "reject" -> listOf("Charger in use", "Not at home", "Vehicle not compatible", "Safety concern"); else -> emptyList() }
+                if (presets.isNotEmpty()) @OptIn(ExperimentalLayoutApi::class) FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    presets.forEach { p -> FilterChip(reason == p, { reason = if (reason == p) "" else p }, label = { Text(p) }) } }
+                OutlinedTextField(reason, { reason = it.take(300) }, label = { Text(stringResource(R.string.field_reason_optional)) })
+            } },
             confirmButton = { TextButton(onClick = { vm.act(a, reason.ifBlank { null }); confirm = null }) { Text(stringResource(R.string.action_confirm)) } },
             dismissButton = { TextButton(onClick = { confirm = null }) { Text(stringResource(R.string.action_back)) } })
     }

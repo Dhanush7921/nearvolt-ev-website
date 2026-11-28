@@ -67,6 +67,7 @@ const val PRIMARY_LOCAL_ID = "server-primary"
 @Composable
 fun HomeScreen(app: AppViewModel, openMap: () -> Unit, openFind: () -> Unit, openGarage: () -> Unit, openFavourites: () -> Unit, openSafety: () -> Unit,
                openEmergency: () -> Unit, openAlerts: () -> Unit, openAccount: () -> Unit, openRequest: (String) -> Unit, openActivity: () -> Unit,
+               openCatalogue: () -> Unit = {}, openVolt: () -> Unit = {}, openTools: () -> Unit = {},
                vm: HomeViewModel = viewModel(), locationVm: FindViewModel = viewModel(key = "home-location")) {
     val s by vm.state.collectAsStateWithLifecycle()
     val appState by app.state.collectAsStateWithLifecycle()
@@ -111,10 +112,36 @@ fun HomeScreen(app: AppViewModel, openMap: () -> Unit, openFind: () -> Unit, ope
                 ServerStatusChip(appState.config != null, s.offline)
             }
         }
+        item(key = "intel") {
+            // V1.3: EV intelligence entry points, kept above the fold.
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.height(IntrinsicSize.Min)) {
+                GlassCard(onClick = openVolt, accent = true, modifier = Modifier.weight(1f).fillMaxHeight()) {
+                    Box(Modifier.size(40.dp).clip(CircleShape).background(Brush.radialGradient(listOf(Brand.NeonMint, Brand.EmeraldBrand))), contentAlignment = Alignment.Center) {
+                        VoltMark(Modifier.size(24.dp), animate = false) }
+                    Spacer(Modifier.height(8.dp))
+                    Text(stringResource(R.string.home_volt_title), style = MaterialTheme.typography.titleSmall)
+                    Text(stringResource(R.string.home_volt_body), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                GlassCard(onClick = openCatalogue, modifier = Modifier.weight(1f).fillMaxHeight()) {
+                    LeadingBadge(Icons.Outlined.ElectricCar, Tone.Good, 40.dp)
+                    Spacer(Modifier.height(8.dp))
+                    Text(stringResource(R.string.cat_title), style = MaterialTheme.typography.titleSmall)
+                    Text(stringResource(R.string.home_cat_body), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
         if (showLocation || disco.fix == null) item(key = "locationPanel") {
             GlassCard {
                 Text(stringResource(R.string.find_start_title), style = MaterialTheme.typography.titleMedium)
                 Text(disco.fix?.label ?: stringResource(R.string.find_start_body), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                disco.fix?.let { f ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 6.dp)) {
+                        StatusPill(stringResource(if (f.approximate) R.string.loc_approx else R.string.loc_precise), if (f.approximate) Tone.Warn else Tone.Good)
+                        disco.nearby?.let { n -> StatusPill(n.serviceArea?.name?.let { stringResource(R.string.loc_in_area, it) } ?: stringResource(R.string.loc_outside_area), if (n.serviceArea != null) Tone.Good else Tone.Bad) }
+                    }
+                    if (f.approximate) Text(stringResource(R.string.loc_approx_note), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.loc_session_note), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
                 Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(onClick = locate, enabled = !locationState.locating, modifier = Modifier.weight(1f)) {
@@ -129,7 +156,10 @@ fun HomeScreen(app: AppViewModel, openMap: () -> Unit, openFind: () -> Unit, ope
                     "MANUAL_FAILED" -> InlineMessage(stringResource(R.string.find_issue_manual))
                     "OUTSIDE" -> InlineMessage(stringResource(R.string.find_issue_outside))
                 }
-                if (disco.fix != null) TextButton(onClick = openMap) { Text(stringResource(R.string.tab_map)) }
+                if (disco.fix != null) Row {
+                    TextButton(onClick = locate, enabled = !locationState.locating) { Icon(Icons.Outlined.Refresh, null, Modifier.size(16.dp)); Spacer(Modifier.width(4.dp)); Text(stringResource(R.string.loc_refresh)) }
+                    TextButton(onClick = openMap) { Text(stringResource(R.string.tab_map)) }
+                }
             }
         }
         item(key = "vehicle") { VehicleCard(me.vehicle, primaryLocal, openGarage) }
@@ -139,7 +169,7 @@ fun HomeScreen(app: AppViewModel, openMap: () -> Unit, openFind: () -> Unit, ope
                 Shortcut(Icons.Outlined.Map, stringResource(R.string.home_find_on_map), Modifier.weight(1f), openMap)
                 Shortcut(Icons.Outlined.DirectionsCar, stringResource(R.string.garage_title), Modifier.weight(1f), openGarage)
                 Shortcut(Icons.Outlined.FavoriteBorder, stringResource(R.string.fav_title), Modifier.weight(1f), openFavourites)
-                Shortcut(Icons.Outlined.Shield, stringResource(R.string.safety_short), Modifier.weight(1f), openSafety)
+                Shortcut(Icons.Outlined.Handyman, stringResource(R.string.tools_short), Modifier.weight(1f), openTools)
             }
         }
         item(key = "nearby") {

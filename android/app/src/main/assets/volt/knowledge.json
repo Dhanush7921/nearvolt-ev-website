@@ -1,0 +1,1986 @@
+[
+  {
+    "id": "bev",
+    "category": "general",
+    "patterns": [
+      "what is an electric vehicle",
+      "what is a bev"
+    ],
+    "keywords": [
+      "what",
+      "is",
+      "an",
+      "electric",
+      "vehicle"
+    ],
+    "answer": "A battery electric vehicle uses stored electricity to drive an electric motor.",
+    "source": "components",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "traction",
+    "category": "general",
+    "patterns": [
+      "traction battery pack"
+    ],
+    "keywords": [
+      "traction",
+      "battery",
+      "pack"
+    ],
+    "answer": "The traction pack stores energy for the drive motor.",
+    "source": "components",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "motor",
+    "category": "general",
+    "patterns": [
+      "electric traction motor"
+    ],
+    "keywords": [
+      "electric",
+      "traction",
+      "motor"
+    ],
+    "answer": "The traction motor converts electrical energy into wheel-driving motion.",
+    "source": "components",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "port",
+    "category": "general",
+    "patterns": [
+      "vehicle charge port"
+    ],
+    "keywords": [
+      "vehicle",
+      "charge",
+      "port"
+    ],
+    "answer": "The charge port connects the vehicle to external charging equipment.",
+    "source": "components",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "auxiliary",
+    "category": "general",
+    "patterns": [
+      "auxiliary battery accessories"
+    ],
+    "keywords": [
+      "auxiliary",
+      "battery",
+      "accessories"
+    ],
+    "answer": "An auxiliary battery powers vehicle accessories; it differs from the traction pack.",
+    "source": "components",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "converter",
+    "category": "general",
+    "patterns": [
+      "dc dc converter"
+    ],
+    "keywords": [
+      "dc",
+      "dc",
+      "converter"
+    ],
+    "answer": "A DC/DC converter supplies lower-voltage accessories from the higher-voltage traction system.",
+    "source": "components",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "controller",
+    "category": "general",
+    "patterns": [
+      "power electronics controller"
+    ],
+    "keywords": [
+      "power",
+      "electronics",
+      "controller"
+    ],
+    "answer": "The controller manages energy flow, motor speed and torque.",
+    "source": "components",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "thermal",
+    "category": "general",
+    "patterns": [
+      "thermal cooling system"
+    ],
+    "keywords": [
+      "thermal",
+      "cooling",
+      "system"
+    ],
+    "answer": "Thermal management keeps propulsion components within their operating temperature range.",
+    "source": "components",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "transmission",
+    "category": "general",
+    "patterns": [
+      "electric transmission"
+    ],
+    "keywords": [
+      "electric",
+      "transmission"
+    ],
+    "answer": "The transmission transfers motor power to the wheels.",
+    "source": "components",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "tailpipe",
+    "category": "general",
+    "patterns": [
+      "tailpipe emissions electric car"
+    ],
+    "keywords": [
+      "tailpipe",
+      "emissions",
+      "electric",
+      "car"
+    ],
+    "answer": "A battery electric car produces no tailpipe exhaust during driving.",
+    "source": "components",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "evse",
+    "category": "general",
+    "patterns": [
+      "what is evse"
+    ],
+    "keywords": [
+      "what",
+      "is",
+      "evse"
+    ],
+    "answer": "EVSE means electric vehicle supply equipment: equipment supplying electricity for charging.",
+    "source": "components",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "onboard",
+    "category": "home",
+    "patterns": [
+      "onboard charger ac dc conversion",
+      "what is an onboard charger"
+    ],
+    "keywords": [
+      "onboard",
+      "charger",
+      "ac",
+      "dc",
+      "conversion"
+    ],
+    "answer": "The onboard charger converts incoming AC to DC for the traction battery.",
+    "source": "components",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "li-ion",
+    "category": "battery",
+    "patterns": [
+      "lithium ion battery",
+      "what battery chemistry do evs use"
+    ],
+    "keywords": [
+      "lithium",
+      "ion",
+      "battery"
+    ],
+    "answer": "Most battery electric cars use lithium-ion batteries; exact chemistry varies.",
+    "source": "batteries",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "density",
+    "category": "battery",
+    "patterns": [
+      "battery energy density"
+    ],
+    "keywords": [
+      "battery",
+      "energy",
+      "density"
+    ],
+    "answer": "High energy density means more stored energy for a given mass or volume.",
+    "source": "batteries",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "power-ratio",
+    "category": "battery",
+    "patterns": [
+      "battery power to weight"
+    ],
+    "keywords": [
+      "battery",
+      "power",
+      "to",
+      "weight"
+    ],
+    "answer": "Lithium-ion batteries can deliver high power relative to their weight.",
+    "source": "batteries",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "efficiency-battery",
+    "category": "battery",
+    "patterns": [
+      "battery energy efficiency"
+    ],
+    "keywords": [
+      "battery",
+      "energy",
+      "efficiency"
+    ],
+    "answer": "Lithium-ion batteries have high energy efficiency, but energy losses still occur.",
+    "source": "batteries",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "self-discharge",
+    "category": "battery",
+    "patterns": [
+      "battery self discharge"
+    ],
+    "keywords": [
+      "battery",
+      "self",
+      "discharge"
+    ],
+    "answer": "Lithium-ion batteries have relatively low self-discharge while unused.",
+    "source": "batteries",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "recycling",
+    "category": "battery",
+    "patterns": [
+      "battery recycling"
+    ],
+    "keywords": [
+      "battery",
+      "recycling"
+    ],
+    "answer": "Many lithium-ion battery materials can be recovered; economical recovery remains challenging.",
+    "source": "batteries",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "second-life",
+    "category": "battery",
+    "patterns": [
+      "battery second life reuse"
+    ],
+    "keywords": [
+      "battery",
+      "second",
+      "life",
+      "reuse"
+    ],
+    "answer": "Some retired EV batteries may serve stationary storage after suitability assessment.",
+    "source": "batteries",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "chemistry-variation",
+    "category": "battery",
+    "patterns": [
+      "battery chemistry variation"
+    ],
+    "keywords": [
+      "battery",
+      "chemistry",
+      "variation"
+    ],
+    "answer": "EV battery chemistry may differ from that used in consumer electronics.",
+    "source": "batteries",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "nimh",
+    "category": "battery",
+    "patterns": [
+      "nickel metal hydride battery"
+    ],
+    "keywords": [
+      "nickel",
+      "metal",
+      "hydride",
+      "battery"
+    ],
+    "answer": "Nickel-metal hydride batteries have been widely used in hybrid electric vehicles.",
+    "source": "batteries",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "ultracapacitor",
+    "category": "battery",
+    "patterns": [
+      "ultracapacitor energy storage"
+    ],
+    "keywords": [
+      "ultracapacitor",
+      "energy",
+      "storage"
+    ],
+    "answer": "Ultracapacitors can supplement batteries for short power demands.",
+    "source": "batteries",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "chemical-energy",
+    "category": "battery",
+    "patterns": [
+      "battery stores chemical energy"
+    ],
+    "keywords": [
+      "battery",
+      "stores",
+      "chemical",
+      "energy"
+    ],
+    "answer": "A battery stores energy chemically and releases it electrically.",
+    "source": "chemistry",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "electrolyte",
+    "category": "battery",
+    "patterns": [
+      "battery electrolyte"
+    ],
+    "keywords": [
+      "battery",
+      "electrolyte"
+    ],
+    "answer": "The electrolyte enables ions to move inside a battery.",
+    "source": "chemistry",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "electrodes",
+    "category": "battery",
+    "patterns": [
+      "battery electrodes anode cathode"
+    ],
+    "keywords": [
+      "battery",
+      "electrodes",
+      "anode",
+      "cathode"
+    ],
+    "answer": "Anode and cathode are the battery electrodes involved in energy storage reactions.",
+    "source": "chemistry",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "electrons",
+    "category": "battery",
+    "patterns": [
+      "battery electrons external circuit"
+    ],
+    "keywords": [
+      "battery",
+      "electrons",
+      "external",
+      "circuit"
+    ],
+    "answer": "Electrons travel through the external circuit while ions move inside the battery.",
+    "source": "chemistry",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "recharge",
+    "category": "battery",
+    "patterns": [
+      "rechargeable battery operation"
+    ],
+    "keywords": [
+      "rechargeable",
+      "battery",
+      "operation"
+    ],
+    "answer": "Rechargeable batteries reverse energy-storage reactions when supplied with electrical energy.",
+    "source": "chemistry",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "discharge",
+    "category": "battery",
+    "patterns": [
+      "battery discharging meaning"
+    ],
+    "keywords": [
+      "battery",
+      "discharging",
+      "meaning"
+    ],
+    "answer": "Discharging converts stored chemical energy into electrical energy for a connected load.",
+    "source": "chemistry",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "storage-energy",
+    "category": "battery",
+    "patterns": [
+      "battery disconnected stored energy"
+    ],
+    "keywords": [
+      "battery",
+      "disconnected",
+      "stored",
+      "energy"
+    ],
+    "answer": "A charged battery retains chemical potential energy for later use.",
+    "source": "chemistry",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "bms",
+    "category": "battery",
+    "patterns": [
+      "what is bms",
+      "battery management system"
+    ],
+    "keywords": [
+      "what",
+      "is",
+      "bms"
+    ],
+    "answer": "Battery management monitors the pack and supports protective control.",
+    "source": "bms",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "cell-voltage",
+    "category": "battery",
+    "patterns": [
+      "cell voltage monitoring"
+    ],
+    "keywords": [
+      "cell",
+      "voltage",
+      "monitoring"
+    ],
+    "answer": "Battery monitoring measures individual cell voltages to help detect abnormal conditions.",
+    "source": "bms",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "cell-temperature",
+    "category": "battery",
+    "patterns": [
+      "cell temperature monitoring"
+    ],
+    "keywords": [
+      "cell",
+      "temperature",
+      "monitoring"
+    ],
+    "answer": "Cell temperature measurements support safe battery operation.",
+    "source": "bms",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "pack-current",
+    "category": "battery",
+    "patterns": [
+      "pack current sensing"
+    ],
+    "keywords": [
+      "pack",
+      "current",
+      "sensing"
+    ],
+    "answer": "Current sensing measures electrical flow into or out of the pack.",
+    "source": "bms",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "overcurrent",
+    "category": "battery",
+    "patterns": [
+      "battery overcurrent protection"
+    ],
+    "keywords": [
+      "battery",
+      "overcurrent",
+      "protection"
+    ],
+    "answer": "Overcurrent detection helps trigger protective responses when current exceeds allowed limits.",
+    "source": "bms",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "disconnect",
+    "category": "battery",
+    "patterns": [
+      "battery protective disconnect"
+    ],
+    "keywords": [
+      "battery",
+      "protective",
+      "disconnect"
+    ],
+    "answer": "Protection circuits can disconnect a battery when a fault is detected.",
+    "source": "bms",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "isolation",
+    "category": "battery",
+    "patterns": [
+      "battery electrical isolation"
+    ],
+    "keywords": [
+      "battery",
+      "electrical",
+      "isolation"
+    ],
+    "answer": "Isolation separates different voltage domains in battery-system designs.",
+    "source": "bms",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "connector",
+    "category": "connector",
+    "patterns": [
+      "identify charging connector",
+      "charging connector types"
+    ],
+    "keywords": [
+      "identify",
+      "charging",
+      "connector"
+    ],
+    "answer": "Read the connector label and vehicle manual; physical appearance alone cannot confirm compatibility.",
+    "source": "charging",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "ccs",
+    "category": "connector",
+    "patterns": [
+      "what is ccs connector"
+    ],
+    "keywords": [
+      "what",
+      "is",
+      "ccs",
+      "connector"
+    ],
+    "answer": "CCS combines AC charging with additional DC contacts; confirm the regional variant.",
+    "source": "charging",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "chademo",
+    "category": "connector",
+    "patterns": [
+      "what is chademo"
+    ],
+    "keywords": [
+      "what",
+      "is",
+      "chademo"
+    ],
+    "answer": "CHAdeMO is a DC charging connector system used by some vehicles.",
+    "source": "charging",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "nacs",
+    "category": "connector",
+    "patterns": [
+      "what is nacs j3400"
+    ],
+    "keywords": [
+      "what",
+      "is",
+      "nacs",
+      "j3400"
+    ],
+    "answer": "J3400 is based on NACS and supports AC and DC charging.",
+    "source": "charging",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "j1772",
+    "category": "connector",
+    "patterns": [
+      "what is j1772"
+    ],
+    "keywords": [
+      "what",
+      "is",
+      "j1772"
+    ],
+    "answer": "J1772 is an AC charging connector used in North America.",
+    "source": "charging",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "station-location",
+    "category": "general",
+    "patterns": [
+      "charging station location definition"
+    ],
+    "keywords": [
+      "charging",
+      "station",
+      "location",
+      "definition"
+    ],
+    "answer": "A station location is a physical site with charging ports.",
+    "source": "charging",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "charging-port",
+    "category": "general",
+    "patterns": [
+      "charging port multiple connectors"
+    ],
+    "keywords": [
+      "charging",
+      "port",
+      "multiple",
+      "connectors"
+    ],
+    "answer": "One charging port serves one vehicle at a time, even with multiple connectors.",
+    "source": "charging",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "wireless",
+    "category": "general",
+    "patterns": [
+      "wireless inductive charging"
+    ],
+    "keywords": [
+      "wireless",
+      "inductive",
+      "charging"
+    ],
+    "answer": "Inductive charging transfers energy through an electromagnetic field without a charging cable.",
+    "source": "charging",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "charging-factors",
+    "category": "time",
+    "patterns": [
+      "why charging time varies"
+    ],
+    "keywords": [
+      "why",
+      "charging",
+      "time",
+      "varies"
+    ],
+    "answer": "Charging time depends on starting percentage, capacity, vehicle limits and charging equipment.",
+    "source": "charging",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "fast-charge",
+    "category": "time",
+    "patterns": [
+      "dc fast charging"
+    ],
+    "keywords": [
+      "dc",
+      "fast",
+      "charging"
+    ],
+    "answer": "DC fast charging supplies DC; vehicle and battery conditions limit actual power.",
+    "source": "charging",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "charge-power",
+    "category": "time",
+    "patterns": [
+      "charger rated power actual"
+    ],
+    "keywords": [
+      "charger",
+      "rated",
+      "power",
+      "actual"
+    ],
+    "answer": "A charger's maximum rating does not guarantee that power throughout charging.",
+    "source": "charging",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "taper",
+    "category": "time",
+    "patterns": [
+      "charging taper near full"
+    ],
+    "keywords": [
+      "charging",
+      "taper",
+      "near",
+      "full"
+    ],
+    "answer": "Charging power varies with battery state of charge; constant-power estimates are simplified.",
+    "source": "charging",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "maintenance",
+    "category": "general",
+    "patterns": [
+      "electric vehicle maintenance"
+    ],
+    "keywords": [
+      "electric",
+      "vehicle",
+      "maintenance"
+    ],
+    "answer": "BEVs generally need less maintenance than combustion vehicles, but still require scheduled checks.",
+    "source": "maintenance",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "engine-oil",
+    "category": "general",
+    "patterns": [
+      "electric car engine oil change"
+    ],
+    "keywords": [
+      "electric",
+      "car",
+      "engine",
+      "oil",
+      "change"
+    ],
+    "answer": "A battery electric drivetrain has no combustion-engine oil-change requirement.",
+    "source": "maintenance",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "regen",
+    "category": "general",
+    "patterns": [
+      "regenerative braking wear"
+    ],
+    "keywords": [
+      "regenerative",
+      "braking",
+      "wear"
+    ],
+    "answer": "Regenerative braking reduces friction-brake use and can reduce brake wear.",
+    "source": "maintenance",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "hybrid-service",
+    "category": "general",
+    "patterns": [
+      "hybrid maintenance"
+    ],
+    "keywords": [
+      "hybrid",
+      "maintenance"
+    ],
+    "answer": "Hybrids retain combustion engines and their associated maintenance needs.",
+    "source": "maintenance",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "coolant",
+    "category": "general",
+    "patterns": [
+      "battery coolant maintenance"
+    ],
+    "keywords": [
+      "battery",
+      "coolant",
+      "maintenance"
+    ],
+    "answer": "Some battery cooling systems require checks; follow the vehicle manual.",
+    "source": "maintenance",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "service-manual",
+    "category": "general",
+    "patterns": [
+      "vehicle service schedule"
+    ],
+    "keywords": [
+      "vehicle",
+      "service",
+      "schedule"
+    ],
+    "answer": "Use the manufacturer maintenance schedule for your specific vehicle.",
+    "source": "maintenance",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "battery-health",
+    "category": "battery",
+    "patterns": [
+      "ev battery health",
+      "does battery degrade"
+    ],
+    "keywords": [
+      "ev",
+      "battery",
+      "health"
+    ],
+    "answer": "Battery capacity can decline over time; a service assessment is needed for diagnosis.",
+    "source": "maintenance",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "cycle-life",
+    "category": "battery",
+    "patterns": [
+      "battery cycle life"
+    ],
+    "keywords": [
+      "battery",
+      "cycle",
+      "life"
+    ],
+    "answer": "Batteries tolerate a finite number of charge-discharge cycles.",
+    "source": "maintenance",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "warranty",
+    "category": "battery",
+    "patterns": [
+      "battery warranty duration"
+    ],
+    "keywords": [
+      "battery",
+      "warranty",
+      "duration"
+    ],
+    "answer": "Warranty terms vary; consult your vehicle's actual warranty documents.",
+    "source": "maintenance",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "battery-replacement",
+    "category": "battery",
+    "patterns": [
+      "battery replacement price"
+    ],
+    "keywords": [
+      "battery",
+      "replacement",
+      "price"
+    ],
+    "answer": "Replacement can be costly; obtain a model-specific quote from authorized service.",
+    "source": "maintenance",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "high-voltage",
+    "category": "safety",
+    "patterns": [
+      "high voltage cables repair"
+    ],
+    "keywords": [
+      "high",
+      "voltage",
+      "cables",
+      "repair"
+    ],
+    "answer": "EV high-voltage systems require trained personnel; do not open or repair them yourself.",
+    "source": "maintenance",
+    "safety": "caution",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "reignition",
+    "category": "safety",
+    "patterns": [
+      "battery fire reignition"
+    ],
+    "keywords": [
+      "battery",
+      "fire",
+      "reignition"
+    ],
+    "answer": "Damaged batteries can ignite later or reignite; responders need vehicle-specific guidance.",
+    "source": "maintenance",
+    "safety": "caution",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "home-safety",
+    "category": "home",
+    "patterns": [
+      "home charging safety",
+      "safe charging at home"
+    ],
+    "keywords": [
+      "home",
+      "charging",
+      "safety"
+    ],
+    "answer": "Use certified equipment and an electrician-assessed supply. Follow the vehicle and charger manuals.",
+    "source": "fire",
+    "safety": "caution",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "dedicated",
+    "category": "home",
+    "patterns": [
+      "dedicated charging circuit"
+    ],
+    "keywords": [
+      "dedicated",
+      "charging",
+      "circuit"
+    ],
+    "answer": "Have a qualified electrician assess and install an appropriate dedicated charging circuit.",
+    "source": "fire",
+    "safety": "caution",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "old-wiring",
+    "category": "home",
+    "patterns": [
+      "old house wiring charging"
+    ],
+    "keywords": [
+      "old",
+      "house",
+      "wiring",
+      "charging"
+    ],
+    "answer": "Older wiring may be unsuitable; obtain a qualified electrician's assessment.",
+    "source": "fire",
+    "safety": "caution",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "certification",
+    "category": "home",
+    "patterns": [
+      "charger certification"
+    ],
+    "keywords": [
+      "charger",
+      "certification"
+    ],
+    "answer": "Choose charging equipment certified by a recognized testing organization.",
+    "source": "fire",
+    "safety": "caution",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "rcd",
+    "category": "home",
+    "patterns": [
+      "residual current device"
+    ],
+    "keywords": [
+      "residual",
+      "current",
+      "device"
+    ],
+    "answer": "A properly installed residual-current device disconnects supply when a fault is detected.",
+    "source": "fire",
+    "safety": "caution",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "extension",
+    "category": "safety",
+    "patterns": [
+      "extension cord charging",
+      "multiplug power strip"
+    ],
+    "keywords": [
+      "extension",
+      "cord",
+      "charging"
+    ],
+    "answer": "Do not charge through an extension lead or multiplug adapter.",
+    "source": "fire",
+    "safety": "caution",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "damaged",
+    "category": "safety",
+    "patterns": [
+      "damaged charging cable"
+    ],
+    "keywords": [
+      "damaged",
+      "charging",
+      "cable"
+    ],
+    "answer": "Do not use visibly damaged charging equipment.",
+    "source": "fire",
+    "safety": "caution",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "children",
+    "category": "safety",
+    "patterns": [
+      "children charging equipment"
+    ],
+    "keywords": [
+      "children",
+      "charging",
+      "equipment"
+    ],
+    "answer": "Keep charging components away from children when unused.",
+    "source": "fire",
+    "safety": "caution",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "rain",
+    "category": "safety",
+    "patterns": [
+      "charging in rain wet conditions"
+    ],
+    "keywords": [
+      "charging",
+      "in",
+      "rain",
+      "wet",
+      "conditions"
+    ],
+    "answer": "Prevent water entering outlets; follow manufacturer guidance for wet conditions.",
+    "source": "fire",
+    "safety": "caution",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "charger-care",
+    "category": "safety",
+    "patterns": [
+      "charger maintenance inspection"
+    ],
+    "keywords": [
+      "charger",
+      "maintenance",
+      "inspection"
+    ],
+    "answer": "Follow the charger maintenance instructions and watch for excessive wear.",
+    "source": "fire",
+    "safety": "caution",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "swelling",
+    "category": "safety",
+    "patterns": [
+      "swollen battery",
+      "bulging battery"
+    ],
+    "keywords": [
+      "swollen",
+      "battery"
+    ],
+    "answer": "Stop using a battery that changes shape. Keep away and seek professional help.",
+    "source": "battery-safety",
+    "safety": "caution",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "odor",
+    "category": "safety",
+    "patterns": [
+      "battery unusual smell"
+    ],
+    "keywords": [
+      "battery",
+      "unusual",
+      "smell"
+    ],
+    "answer": "Stop using batteries with unusual odor; treat smoke or fire as an emergency.",
+    "source": "battery-safety",
+    "safety": "caution",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "leak",
+    "category": "safety",
+    "patterns": [
+      "leaking battery"
+    ],
+    "keywords": [
+      "leaking",
+      "battery"
+    ],
+    "answer": "Stop using a leaking battery; avoid contact and seek professional assistance.",
+    "source": "battery-safety",
+    "safety": "caution",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "heat",
+    "category": "safety",
+    "patterns": [
+      "battery excessive heat"
+    ],
+    "keywords": [
+      "battery",
+      "excessive",
+      "heat"
+    ],
+    "answer": "Unusual heat is a warning sign. Stop use and seek qualified assistance.",
+    "source": "battery-safety",
+    "safety": "caution",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "noise",
+    "category": "safety",
+    "patterns": [
+      "battery hissing noises"
+    ],
+    "keywords": [
+      "battery",
+      "hissing",
+      "noises"
+    ],
+    "answer": "Odd noises are a warning sign; stop use and move away if danger is present.",
+    "source": "battery-safety",
+    "safety": "caution",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "trash",
+    "category": "safety",
+    "patterns": [
+      "battery household trash"
+    ],
+    "keywords": [
+      "battery",
+      "household",
+      "trash"
+    ],
+    "answer": "Do not discard lithium-ion batteries in household waste; use appropriate battery recycling.",
+    "source": "battery-safety",
+    "safety": "caution",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "sun",
+    "category": "safety",
+    "patterns": [
+      "battery direct sunlight storage"
+    ],
+    "keywords": [
+      "battery",
+      "direct",
+      "sunlight",
+      "storage"
+    ],
+    "answer": "Keep spare lithium-ion batteries away from direct sun, heat and combustible materials.",
+    "source": "battery-safety",
+    "safety": "caution",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "trip-plan",
+    "category": "trip",
+    "patterns": [
+      "plan my journey",
+      "road trip planning"
+    ],
+    "keywords": [
+      "plan",
+      "my",
+      "journey"
+    ],
+    "answer": "Plan compatible charging stops and backups before departure; confirm availability with operators.",
+    "source": "trip",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "call-ahead",
+    "category": "trip",
+    "patterns": [
+      "call charging station ahead"
+    ],
+    "keywords": [
+      "call",
+      "charging",
+      "station",
+      "ahead"
+    ],
+    "answer": "Contact the operator to confirm a charger is working and available.",
+    "source": "trip",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "low-battery",
+    "category": "trip",
+    "patterns": [
+      "my battery is low",
+      "running out of charge"
+    ],
+    "keywords": [
+      "my",
+      "battery",
+      "is",
+      "low"
+    ],
+    "answer": "Stop somewhere safe before charge runs out. Confirm a reachable compatible charger or contact roadside assistance.",
+    "source": "trip",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "range-factors",
+    "category": "trip",
+    "patterns": [
+      "real world driving range"
+    ],
+    "keywords": [
+      "real",
+      "world",
+      "driving",
+      "range"
+    ],
+    "answer": "Plan conservatively; driving conditions affect achievable range.",
+    "source": "trip",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "public-charging",
+    "category": "trip",
+    "patterns": [
+      "public charging availability"
+    ],
+    "keywords": [
+      "public",
+      "charging",
+      "availability"
+    ],
+    "answer": "Public charging can supplement home charging; availability varies by place and operator.",
+    "source": "trip",
+    "safety": "general",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "emergency-number",
+    "category": "emergency",
+    "patterns": [
+      "india emergency number",
+      "call 112"
+    ],
+    "keywords": [
+      "india",
+      "emergency",
+      "number"
+    ],
+    "answer": "For immediate danger in India, dial 112 for emergency assistance.",
+    "source": "emergency",
+    "safety": "critical",
+    "reviewStatus": "source-checked",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "nearvolt",
+    "category": "general",
+    "patterns": [
+      "how nearvolt works",
+      "what is nearvolt"
+    ],
+    "keywords": [
+      "how",
+      "nearvolt",
+      "works"
+    ],
+    "answer": "NEARVOLT EV is an emergency-purpose platform connecting drivers with verified charging hosts. This demo has no live operational connection.",
+    "source": "brief",
+    "safety": "general",
+    "reviewStatus": "owner-provided",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "area",
+    "category": "general",
+    "patterns": [
+      "nearvolt service area city"
+    ],
+    "keywords": [
+      "nearvolt",
+      "service",
+      "area",
+      "city"
+    ],
+    "answer": "NEARVOLT's initial planned service area is Visakhapatnam, Andhra Pradesh, India.",
+    "source": "brief",
+    "safety": "general",
+    "reviewStatus": "owner-provided",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "hardware",
+    "category": "general",
+    "patterns": [
+      "nearvolt hardware installation"
+    ],
+    "keywords": [
+      "nearvolt",
+      "hardware",
+      "installation"
+    ],
+    "answer": "NEARVOLT does not manufacture, supply, install or remotely operate charging hardware.",
+    "source": "brief",
+    "safety": "general",
+    "reviewStatus": "owner-provided",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "payments",
+    "category": "general",
+    "patterns": [
+      "nearvolt payment gateway"
+    ],
+    "keywords": [
+      "nearvolt",
+      "payment",
+      "gateway"
+    ],
+    "answer": "No payment gateway is included in the current project scope.",
+    "source": "brief",
+    "safety": "general",
+    "reviewStatus": "owner-provided",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "guarantee",
+    "category": "general",
+    "patterns": [
+      "guaranteed charging assistance"
+    ],
+    "keywords": [
+      "guaranteed",
+      "charging",
+      "assistance"
+    ],
+    "answer": "Assistance is not guaranteed. Availability depends on hosts, compatibility and host acceptance.",
+    "source": "brief",
+    "safety": "general",
+    "reviewStatus": "owner-provided",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "live-hosts",
+    "category": "find-charging",
+    "patterns": [
+      "find charging near me",
+      "nearby hosts",
+      "open map"
+    ],
+    "keywords": [
+      "find",
+      "charging",
+      "near",
+      "me"
+    ],
+    "answer": "Live discovery requires NEARVOLT integration. This demo cannot locate hosts, confirm availability or reveal host addresses.",
+    "source": "brief",
+    "safety": "general",
+    "reviewStatus": "owner-provided",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "compatibility",
+    "category": "compatibility",
+    "patterns": [
+      "check connector compatibility",
+      "will my charger fit"
+    ],
+    "keywords": [
+      "check",
+      "connector",
+      "compatibility"
+    ],
+    "answer": "Confirm your exact vehicle, connector, charger and manufacturer approval. This demo cannot certify equipment compatibility.",
+    "source": "brief",
+    "safety": "general",
+    "reviewStatus": "owner-provided",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "host-registration",
+    "category": "host",
+    "patterns": [
+      "register as host",
+      "become a charging host"
+    ],
+    "keywords": [
+      "register",
+      "as",
+      "host"
+    ],
+    "answer": "Future host registration requires verification. This standalone assistant cannot register or approve hosts.",
+    "source": "brief",
+    "safety": "general",
+    "reviewStatus": "owner-provided",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "charging-request",
+    "category": "request",
+    "patterns": [
+      "request charging",
+      "book a charging session"
+    ],
+    "keywords": [
+      "request",
+      "charging"
+    ],
+    "answer": "Future requests depend on compatibility, availability and host acceptance. This demo cannot create bookings.",
+    "source": "brief",
+    "safety": "general",
+    "reviewStatus": "owner-provided",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "session-pin",
+    "category": "pin",
+    "patterns": [
+      "session pin verification",
+      "charging pin"
+    ],
+    "keywords": [
+      "session",
+      "pin",
+      "verification"
+    ],
+    "answer": "A future session PIN may verify an agreed session. Exact production rules require owner review; never share login OTPs here.",
+    "source": "design",
+    "safety": "general",
+    "reviewStatus": "owner-provided",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "location",
+    "category": "privacy",
+    "patterns": [
+      "location privacy",
+      "exact host address"
+    ],
+    "keywords": [
+      "location",
+      "privacy"
+    ],
+    "answer": "The standalone app does not request GPS or hold host addresses.",
+    "source": "design",
+    "safety": "general",
+    "reviewStatus": "owner-provided",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "chat-storage",
+    "category": "privacy",
+    "patterns": [
+      "conversation privacy",
+      "where are chats saved"
+    ],
+    "keywords": [
+      "conversation",
+      "privacy"
+    ],
+    "answer": "Chats are saved on this browser only when you enable saving. Avoid entering secrets or sensitive personal data.",
+    "source": "design",
+    "safety": "general",
+    "reviewStatus": "owner-provided",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "delete",
+    "category": "privacy",
+    "patterns": [
+      "delete conversation history"
+    ],
+    "keywords": [
+      "delete",
+      "conversation",
+      "history"
+    ],
+    "answer": "Use Clear chat for the current conversation or Delete all local data in Settings.",
+    "source": "design",
+    "safety": "general",
+    "reviewStatus": "owner-provided",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "microphone",
+    "category": "privacy",
+    "patterns": [
+      "microphone privacy voice"
+    ],
+    "keywords": [
+      "microphone",
+      "privacy",
+      "voice"
+    ],
+    "answer": "Voice input starts only after consent. Browser recognition may send audio to its provider.",
+    "source": "design",
+    "safety": "general",
+    "reviewStatus": "owner-provided",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "tracking",
+    "category": "privacy",
+    "patterns": [
+      "analytics tracking"
+    ],
+    "keywords": [
+      "analytics",
+      "tracking"
+    ],
+    "answer": "This demo contains no analytics, advertising or tracking SDKs.",
+    "source": "design",
+    "safety": "general",
+    "reviewStatus": "owner-provided",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "support",
+    "category": "support",
+    "patterns": [
+      "customer support contact"
+    ],
+    "keywords": [
+      "customer",
+      "support",
+      "contact"
+    ],
+    "answer": "No verified NEARVOLT support contact is configured. Use your vehicle manufacturer's roadside assistance for vehicle help.",
+    "source": "design",
+    "safety": "general",
+    "reviewStatus": "owner-provided",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "feedback",
+    "category": "support",
+    "patterns": [
+      "helpful feedback"
+    ],
+    "keywords": [
+      "helpful",
+      "feedback"
+    ],
+    "answer": "Feedback stays in this browser with the conversation; it is not sent to a support team.",
+    "source": "design",
+    "safety": "general",
+    "reviewStatus": "owner-provided",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "vehicle-profile",
+    "category": "vehicle",
+    "patterns": [
+      "my vehicle profile",
+      "open garage"
+    ],
+    "keywords": [
+      "my",
+      "vehicle",
+      "profile"
+    ],
+    "answer": "Enter optional vehicle details in My vehicle. These are user-provided values, not verified specifications.",
+    "source": "design",
+    "safety": "general",
+    "reviewStatus": "owner-provided",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "scooter",
+    "category": "vehicle",
+    "patterns": [
+      "electric scooter charging"
+    ],
+    "keywords": [
+      "electric",
+      "scooter",
+      "charging"
+    ],
+    "answer": "Use your scooter's own manual and approved charger. Car connector guidance cannot establish scooter compatibility.",
+    "source": "design",
+    "safety": "general",
+    "reviewStatus": "owner-provided",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "model-specs",
+    "category": "vehicle",
+    "patterns": [
+      "exact model battery capacity"
+    ],
+    "keywords": [
+      "exact",
+      "model",
+      "battery",
+      "capacity"
+    ],
+    "answer": "This demo has no verified model specification database. Enter capacity from your vehicle documentation.",
+    "source": "design",
+    "safety": "general",
+    "reviewStatus": "owner-provided",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "ai-model",
+    "category": "general",
+    "patterns": [
+      "are you an llm",
+      "how volt ai works"
+    ],
+    "keywords": [
+      "are",
+      "you",
+      "an",
+      "llm"
+    ],
+    "answer": "VOLT AI uses local rules and knowledge retrieval. No generative model is active.",
+    "source": "design",
+    "safety": "general",
+    "reviewStatus": "owner-provided",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "offline",
+    "category": "general",
+    "patterns": [
+      "offline mode"
+    ],
+    "keywords": [
+      "offline",
+      "mode"
+    ],
+    "answer": "After one complete online load and service-worker installation, knowledge and calculators can work offline.",
+    "source": "design",
+    "safety": "general",
+    "reviewStatus": "owner-provided",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "languages",
+    "category": "general",
+    "patterns": [
+      "telugu hindi language support"
+    ],
+    "keywords": [
+      "telugu",
+      "hindi",
+      "language",
+      "support"
+    ],
+    "answer": "Basic UI labels support Telugu and Hindi. Technical and safety answers remain in English pending translation review.",
+    "source": "design",
+    "safety": "general",
+    "reviewStatus": "owner-provided",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "energy-formula",
+    "category": "energy",
+    "patterns": [
+      "calculate energy required"
+    ],
+    "keywords": [
+      "calculate",
+      "energy",
+      "required"
+    ],
+    "answer": "Required energy in kWh = usable capacity × (target percentage − current percentage) ÷ 100.",
+    "source": "math",
+    "safety": "general",
+    "reviewStatus": "owner-provided",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "percentage",
+    "category": "energy",
+    "patterns": [
+      "battery percentage meaning"
+    ],
+    "keywords": [
+      "battery",
+      "percentage",
+      "meaning"
+    ],
+    "answer": "Percentage represents a fraction of capacity; the calculator uses the usable capacity you supply.",
+    "source": "math",
+    "safety": "general",
+    "reviewStatus": "owner-provided",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "kw-kwh",
+    "category": "energy",
+    "patterns": [
+      "difference kw kwh"
+    ],
+    "keywords": [
+      "difference",
+      "kw",
+      "kwh"
+    ],
+    "answer": "kW measures power. kWh measures energy: one kW sustained for one hour equals one kWh.",
+    "source": "math",
+    "safety": "general",
+    "reviewStatus": "owner-provided",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "time-formula",
+    "category": "time",
+    "patterns": [
+      "calculate charging time",
+      "how long to charge"
+    ],
+    "keywords": [
+      "calculate",
+      "charging",
+      "time"
+    ],
+    "answer": "Estimated hours = required kWh ÷ (effective kW × efficiency). Include losses once; tapering adds uncertainty.",
+    "source": "math",
+    "safety": "general",
+    "reviewStatus": "owner-provided",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "efficiency",
+    "category": "time",
+    "patterns": [
+      "charging efficiency losses"
+    ],
+    "keywords": [
+      "charging",
+      "efficiency",
+      "losses"
+    ],
+    "answer": "Enter efficiency between 0 and 100 percent, excluding zero. Lower efficiency increases estimated grid-side charging time.",
+    "source": "math",
+    "safety": "general",
+    "reviewStatus": "owner-provided",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "range-formula",
+    "category": "range",
+    "patterns": [
+      "calculate driving range",
+      "how far can i drive"
+    ],
+    "keywords": [
+      "calculate",
+      "driving",
+      "range"
+    ],
+    "answer": "Estimated kilometres = usable energy in kWh × 1000 ÷ consumption in Wh/km. Keep a reserve.",
+    "source": "math",
+    "safety": "general",
+    "reviewStatus": "owner-provided",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "consumption",
+    "category": "range",
+    "patterns": [
+      "energy consumption wh km"
+    ],
+    "keywords": [
+      "energy",
+      "consumption",
+      "wh",
+      "km"
+    ],
+    "answer": "Wh/km is energy used per kilometre. Higher consumption reduces estimated range.",
+    "source": "math",
+    "safety": "general",
+    "reviewStatus": "owner-provided",
+    "reviewedAt": "2026-11-28"
+  },
+  {
+    "id": "pending-model",
+    "category": "vehicle",
+    "patterns": [
+      "verified manufacturer model database"
+    ],
+    "keywords": [
+      "model",
+      "specification"
+    ],
+    "answer": "Model-specific values require a verified manufacturer document.",
+    "source": "design",
+    "safety": "caution",
+    "reviewStatus": "needs-review",
+    "reviewedAt": "2026-11-28"
+  }
+]

@@ -18,7 +18,11 @@ private val Context.accountStore by preferencesDataStore("nearvolt_account_local
 @Serializable data class GarageVehicle(
     val id: String, val type: String, val connector: String, val make: String = "", val model: String = "",
     val batteryKwh: Double? = null, val batteryPercent: Int? = null, val batteryUpdatedAt: Long? = null,
+    /** V1.3: catalogue configuration id (assets/catalogue) the user picked, if any. Specs are read from the catalogue, never copied as "verified". */
+    val catalogueId: String? = null,
 )
+/** One VOLT AI exchange. Text only, kept on this device for this account, cleared with "Clear conversation", sign-out and account deletion. */
+@Serializable data class VoltTurn(val fromUser: Boolean, val text: String, val at: Long, val intent: String? = null, val actions: List<String> = emptyList())
 /** Favourite = host id + display name only. No coordinates, no address, no cached availability. */
 @Serializable data class FavouriteHost(val hostId: String, val name: String, val savedAt: Long)
 /** Recent searches store only the text the user typed (manual area search), never GPS coordinates. */
@@ -26,7 +30,13 @@ private val Context.accountStore by preferencesDataStore("nearvolt_account_local
 @Serializable data class LocalAccountData(
     val garage: List<GarageVehicle> = emptyList(), val favourites: List<FavouriteHost> = emptyList(),
     val recents: List<RecentSearch> = emptyList(), val saveRecents: Boolean = true,
+    // V1.3 (all device-local, account-scoped; older stored JSON decodes with these defaults)
+    val favVehicles: List<String> = emptyList(), val recentVehicles: List<String> = emptyList(),
+    val voltHistory: List<VoltTurn> = emptyList(), val voltSaveHistory: Boolean = true,
+    val emergencyContacts: List<EmergencyContact> = emptyList(), val seenIntro13: Boolean = false,
 )
+/** A personal emergency contact the user typed in. Only used to open the dialler/share sheet; never uploaded. */
+@Serializable data class EmergencyContact(val name: String, val phone: String)
 
 /**
  * Account-scoped, device-local storage. Data for each signed-in account lives under a hashed uid key, so two accounts on one
@@ -44,12 +54,14 @@ class AccountStore(private val ctx: Context) {
     suspend fun update(uid: String, f: (LocalAccountData) -> LocalAccountData) {
         ctx.accountStore.edit { p ->
             val cur = p[key(uid)]?.let { runCatching { NvJson.decodeFromString(LocalAccountData.serializer(), it) }.getOrNull() } ?: LocalAccountData()
-            p[key(uid)] = NvJson.encodeToString(f(cur).let { it.copy(recents = it.recents.take(MAX_RECENTS), favourites = it.favourites.take(MAX_FAVS), garage = it.garage.take(MAX_GARAGE)) })
+            p[key(uid)] = NvJson.encodeToString(f(cur).let { it.copy(recents = it.recents.take(MAX_RECENTS), favourites = it.favourites.take(MAX_FAVS), garage = it.garage.take(MAX_GARAGE),
+                favVehicles = it.favVehicles.take(MAX_FAVS), recentVehicles = it.recentVehicles.take(MAX_RECENT_VEHICLES), voltHistory = it.voltHistory.takeLast(MAX_VOLT),
+                emergencyContacts = it.emergencyContacts.take(MAX_CONTACTS)) })
         }
     }
     suspend fun wipe(uid: String) { ctx.accountStore.edit { it.remove(key(uid)) } }
 
-    companion object { const val MAX_RECENTS = 8; const val MAX_FAVS = 50; const val MAX_GARAGE = 10 }
+    companion object { const val MAX_RECENTS = 8; const val MAX_FAVS = 50; const val MAX_GARAGE = 10; const val MAX_RECENT_VEHICLES = 10; const val MAX_VOLT = 80; const val MAX_CONTACTS = 5 }
 }
 
 /** Pure helpers (unit-tested). */
@@ -68,6 +80,11 @@ object LocalRules {
 
     fun upsertVehicle(d: LocalAccountData, v: GarageVehicle) = d.copy(garage = if (d.garage.any { it.id == v.id }) d.garage.map { if (it.id == v.id) v else it } else d.garage + v)
     fun removeVehicle(d: LocalAccountData, id: String) = d.copy(garage = d.garage.filterNot { it.id == id })
+    fun toggleFavVehicle(d: LocalAccountData, id: String) = d.copy(favVehicles = if (id in d.favVehicles) d.favVehicles - id else listOf(id) + d.favVehicles)
+    fun viewedVehicle(d: LocalAccountData, id: String) = d.copy(recentVehicles = (listOf(id) + d.recentVehicles.filterNot { it == id }).take(AccountStore.MAX_RECENT_VEHICLES))
+    fun addVolt(d: LocalAccountData, turns: List<VoltTurn>) = if (!d.voltSaveHistory) d else d.copy(voltHistory = (d.voltHistory + turns.map { it.copy(text = it.text.take(2000)) }).takeLast(AccountStore.MAX_VOLT))
+    /** Indian mobile or landline-ish digits only (with optional +91); 6–13 digits. Name ≤ 40 chars. */
+    fun validContact(name: String, phone: String) = name.isNotBlank() && name.length <= 40 && Regex("^\\+?\\d{6,13}$").matches(phone.replace(" ", ""))
 }
 
 /** Charging estimate. Inputs are user-entered; output is an estimate, never telemetry. */

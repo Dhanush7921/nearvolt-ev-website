@@ -20,6 +20,7 @@ class Prefs(private val ctx: Context) {
         val pendingEmail = stringPreferencesKey("pending_email")
         val lastDeviceToken = stringPreferencesKey("device_token")
         val graphics = stringPreferencesKey("graphics") // adaptive | ultra | lite
+        val lowData = booleanPreferencesKey("low_data") // V1.3: list-first map (no tiles until asked), Lite graphics
     }
     val onboarded: Flow<Boolean> = ctx.store.data.map { it[K.onboarded] ?: false }
     val theme: Flow<String> = ctx.store.data.map { it[K.theme] ?: "system" }
@@ -27,6 +28,8 @@ class Prefs(private val ctx: Context) {
     suspend fun setTheme(v: String) = ctx.store.edit { it[K.theme] = v }
     val graphics: Flow<String> = ctx.store.data.map { it[K.graphics] ?: "adaptive" }
     suspend fun setGraphics(v: String) = ctx.store.edit { it[K.graphics] = v }
+    val lowData: Flow<Boolean> = ctx.store.data.map { it[K.lowData] ?: false }
+    suspend fun setLowData(v: Boolean) = ctx.store.edit { it[K.lowData] = v }
     suspend fun setPendingEmail(v: String?) = ctx.store.edit { if (v == null) it.remove(K.pendingEmail) else it[K.pendingEmail] = v }
     suspend fun pendingEmail(): String? = ctx.store.data.first()[K.pendingEmail]
     suspend fun setDeviceToken(v: String?) = ctx.store.edit { if (v == null) it.remove(K.lastDeviceToken) else it[K.lastDeviceToken] = v }

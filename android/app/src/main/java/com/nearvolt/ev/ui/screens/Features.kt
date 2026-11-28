@@ -47,7 +47,7 @@ import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SubScreen(title: String, onBack: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
+internal fun SubScreen(title: String, onBack: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
     Scaffold(topBar = { TopAppBar(title = { Text(title) }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.action_back)) } }) }) { pad ->
         Column(Modifier.padding(pad).fillMaxSize().ambient().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
     }
@@ -130,7 +130,7 @@ fun GarageScreen(app: AppViewModel, onBack: () -> Unit) {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun VehicleDialog(v: GarageVehicle, isPrimary: Boolean, onDismiss: () -> Unit, onSave: (GarageVehicle) -> Unit) {
+internal fun VehicleDialog(v: GarageVehicle, isPrimary: Boolean, catalogueNote: String? = null, onDismiss: () -> Unit, onSave: (GarageVehicle) -> Unit) {
     var type by remember { mutableStateOf(v.type) }; var connector by remember { mutableStateOf(v.connector) }
     var make by remember { mutableStateOf(v.make) }; var model by remember { mutableStateOf(v.model) }
     var kwh by remember { mutableStateOf(v.batteryKwh?.toString().orEmpty()) }
@@ -149,6 +149,7 @@ private fun VehicleDialog(v: GarageVehicle, isPrimary: Boolean, onDismiss: () ->
             Text(stringResource(R.string.battery_question, pct.toInt()), style = MaterialTheme.typography.titleSmall)
             Slider(pct, { pct = it; pctSet = true }, valueRange = 0f..100f, steps = 99)
             Text(stringResource(R.string.battery_manual_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            catalogueNote?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary) }
             if (isPrimary) Text(stringResource(R.string.garage_sync_note), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         } },
         confirmButton = { TextButton(enabled = kwhOk, onClick = { onSave(v.copy(type = type, connector = connector, make = make.trim(), model = model.trim(), batteryKwh = kwhVal,

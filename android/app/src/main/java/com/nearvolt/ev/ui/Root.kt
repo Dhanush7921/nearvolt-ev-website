@@ -39,7 +39,8 @@ fun NearVoltRoot(vm: AppViewModel) {
     val ctx = androidx.compose.ui.platform.LocalContext.current
     val gMode by vm.container.prefs.graphics.collectAsStateWithLifecycle("adaptive")
     val reduced = com.nearvolt.ev.ui.components.rememberReducedMotion()
-    val gSpec = remember(gMode, reduced) { com.nearvolt.ev.ui.components.resolveGraphics(gMode, ctx, reduced) }
+    val lowData by vm.container.prefs.lowData.collectAsStateWithLifecycle(false)
+    val gSpec = remember(gMode, reduced, lowData) { com.nearvolt.ev.ui.components.resolveGraphics(if (lowData) "lite" else gMode, ctx, reduced) }
     androidx.compose.runtime.CompositionLocalProvider(com.nearvolt.ev.ui.components.LocalGraphics provides gSpec) {
     NearVoltTheme(s.theme) {
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {

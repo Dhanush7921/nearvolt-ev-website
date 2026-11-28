@@ -61,7 +61,11 @@ fun MapScreen(app: AppViewModel, openRequest: (String) -> Unit, openEmergency: (
     val uid = appState.me?.uid
     val local by remember(uid) { if (uid != null) c.accountStore.data(uid) else kotlinx.coroutines.flow.flowOf(LocalAccountData()) }.collectAsStateWithLifecycle(LocalAccountData())
     val scope = rememberCoroutineScope()
-    var listMode by rememberSaveable { mutableStateOf(false) }
+    // Low-data mode: start in list view so no map tiles are fetched until the user switches to the map.
+    // null = user hasn't chosen in this visit; until the preference is known the list is shown (no tile fetch).
+    val lowData by c.prefs.lowData.collectAsStateWithLifecycle(null)
+    var userListMode by rememberSaveable { mutableStateOf<Boolean?>(null) }
+    val listMode = userListMode ?: (lowData ?: true)
     var filters by remember { mutableStateOf(MapFilters()) }
     var filterSheet by remember { mutableStateOf(false) }
     var selected by remember { mutableStateOf<HostSummary?>(null) }
@@ -100,13 +104,13 @@ fun MapScreen(app: AppViewModel, openRequest: (String) -> Unit, openEmergency: (
                 }
             }
             SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                SegmentedButton(!showList, { listMode = false; mapFailed = false }, SegmentedButtonDefaults.itemShape(0, 2), icon = {}) {
+                SegmentedButton(!showList, { userListMode = false; mapFailed = false }, SegmentedButtonDefaults.itemShape(0, 2), icon = {}) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         Icon(Icons.Outlined.Map, null, Modifier.size(16.dp))
                         Text(stringResource(R.string.map_tab))
                     }
                 }
-                SegmentedButton(showList, { listMode = true }, SegmentedButtonDefaults.itemShape(1, 2), icon = {}) {
+                SegmentedButton(showList, { userListMode = true }, SegmentedButtonDefaults.itemShape(1, 2), icon = {}) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         Icon(Icons.Outlined.List, null, Modifier.size(16.dp))
                         Text(stringResource(R.string.map_list))

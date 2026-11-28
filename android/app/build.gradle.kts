@@ -46,8 +46,8 @@ android {
         applicationId = "com.nearvolt.ev"
         minSdk = 26
         targetSdk = 36
-        versionCode = 4
-        versionName = "1.2.1"
+        versionCode = 5
+        versionName = "1.3.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // Google sign-in needs the OAuth *web* client ID from the Firebase project.
         androidResources.localeFilters += listOf("en", "te", "hi")
@@ -120,7 +120,12 @@ android {
         buildConfig = true
         resValues = true
     }
-    packaging { resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" } }
+    packaging {
+        resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" }
+        // V1.3: a dependency (MapLibre) ships 32-bit x86 libs. We don't support x86 (no split for it); excluding it keeps the
+        // universal APK to exactly the three published ABIs (arm64-v8a, armeabi-v7a, x86_64) instead of four.
+        jniLibs { excludes += "lib/x86/**" }
+    }
     // Telugu/Hindi drafts (pending native-speaker review) are compiled only on request. Safety/legal strings need a
     // separate sign-off flag; without it they fall back to English even when the general drafts are enabled.
     sourceSets.getByName("main") {
