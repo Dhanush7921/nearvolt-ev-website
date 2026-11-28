@@ -128,7 +128,7 @@ fun LogoReveal(modifier: Modifier = Modifier, size: androidx.compose.ui.unit.Dp 
 @Composable
 fun EmergencyButton(label: String, enabled: Boolean, loading: Boolean, onClick: () -> Unit) {
     val reduced = rememberReducedMotion()
-    val pulse = if (reduced || !enabled) 0f else rememberInfiniteTransition(label = "sos").animateFloat(0f, 1f, infiniteRepeatable(tween(1800), RepeatMode.Reverse), label = "p").value
+    val pulse = if (reduced || !enabled || !LocalGraphics.current.decorativeMotion) 0f else rememberInfiniteTransition(label = "sos").animateFloat(0f, 1f, infiniteRepeatable(tween(1800), RepeatMode.Reverse), label = "p").value
     val src = remember { MutableInteractionSource() }
     val red = Color(0xFFB91C1C); val redDeep = Color(0xFF7F1D1D)
     Button(onClick = hapticClick(onClick), enabled = enabled && !loading, interactionSource = src,
@@ -154,7 +154,7 @@ fun EmergencyButton(label: String, enabled: Boolean, loading: Boolean, onClick: 
 @Composable
 fun HeroHeader(title: String, subtitle: String, live: Boolean? = null, liveLabel: String? = null) {
     val reduced = rememberReducedMotion()
-    val pulse = if (reduced || live != true) 1f else rememberInfiniteTransition(label = "live").animateFloat(0.4f, 1f, infiniteRepeatable(tween(1100), RepeatMode.Reverse), label = "l").value
+    val pulse = if (reduced || live != true || !LocalGraphics.current.decorativeMotion) 1f else rememberInfiniteTransition(label = "live").animateFloat(0.4f, 1f, infiniteRepeatable(tween(1100), RepeatMode.Reverse), label = "l").value
     Box(Modifier.fillMaxWidth().clip(MaterialTheme.shapes.large).background(Brand.heroGradient).drawBehind {
         drawCircle(Brand.energyGlow, radius = size.width * 0.55f, center = Offset(size.width * 0.95f, 0f))
     }.padding(22.dp)) {

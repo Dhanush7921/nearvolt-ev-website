@@ -39,7 +39,10 @@ object ApiClient {
             .header("X-App-Platform", "android")
             .header("X-App-Version-Code", BuildConfig.VERSION_CODE.toString())
             .header("Accept", "application/json")
-        if (firebaseReady()) {
+        // Public endpoints (/api/v1/public/*: config, deletion request) need neither an ID token nor App Check on the server
+        // (publicRoutes are mounted without authenticate()). Skipping the token waits shortens cold start; protected routes are unchanged.
+        val isPublic = chain.request().url.encodedPath.startsWith("/api/v1/public/")
+        if (firebaseReady() && !isPublic) {
             FirebaseAuth.getInstance().currentUser?.let { u ->
                 runCatching { Tasks.await(u.getIdToken(false), 10, TimeUnit.SECONDS).token }.getOrNull()?.let { b.header("Authorization", "Bearer $it") }
             }

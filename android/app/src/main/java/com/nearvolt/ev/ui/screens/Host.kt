@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.foundation.background
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -44,7 +45,7 @@ import java.util.Locale
 import kotlin.math.sqrt
 
 data class HostState(val listing: HostListing? = null, val incoming: List<ChargeRequest> = emptyList(), val error: ApiResult.Err? = null,
-                     val busy: Boolean = false, val message: String? = null, val saved: Boolean = false)
+                     val busy: Boolean = false, val message: String? = null, val saved: Boolean = false, val recent: List<ChargeRequest>? = null)
 
 class HostViewModel : ViewModel() {
     private val c = NearVoltApp.instance.container
@@ -52,6 +53,8 @@ class HostViewModel : ViewModel() {
     fun load() = viewModelScope.launch {
         when (val l = c.repo.myListing()) { is ApiResult.Ok -> state.update { it.copy(listing = l.value, error = null) }; is ApiResult.Err -> state.update { it.copy(error = l) } }
         (c.repo.requests("host", activeOnly = true) as? ApiResult.Ok)?.let { r -> state.update { it.copy(incoming = r.value.items) } }
+        // Statistics use only the host's own request records from the server (first page). No earnings or energy figures exist.
+        (c.repo.requests("host") as? ApiResult.Ok)?.let { r -> state.update { it.copy(recent = r.value.items) } }
     }
     fun setAvailable(on: Boolean, hours: Int?) = viewModelScope.launch {
         state.update { it.copy(busy = true, message = null) }
@@ -114,6 +117,8 @@ fun HostDashboard(openRequest: (String) -> Unit, openListing: () -> Unit, openHi
                         Text(Time.ago(r.createdAt), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
+                s.recent?.let { rec -> item { HostStats(rec) } }
+                item { HostResponsibilities() }
                 item { TextButton(onClick = openHistory) { Text(stringResource(R.string.dash_history)) } }
             }
         }
@@ -275,5 +280,37 @@ fun ListingEditor(vm: HostViewModel = viewModel()) {
             Text(stringResource(R.string.listing_submit_note), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Spacer(Modifier.height(24.dp))
+    }
+}
+
+@Composable
+private fun HostStats(rec: List<ChargeRequest>) {
+    val done = rec.count { it.status == "COMPLETED" }; val active = rec.count { it.status in RequestText.ACTIVE }
+    val missed = rec.count { it.status in setOf("REJECTED", "EXPIRED", "CANCELLED") }
+    GlassCard {
+        Text(stringResource(R.string.host_stats_title), style = MaterialTheme.typography.titleMedium)
+        Text(stringResource(R.string.host_stats_basis, rec.size), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.height(8.dp))
+        if (rec.size < 3) { Text(stringResource(R.string.host_stats_few), style = MaterialTheme.typography.bodyMedium); return@GlassCard }
+        val reduced = rememberReducedMotion()
+        listOf(Triple(R.string.filter_completed, done, MaterialTheme.colorScheme.primary), Triple(R.string.filter_active, active, com.nearvolt.ev.ui.theme.Brand.NeonMint),
+            Triple(R.string.host_stats_missed, missed, MaterialTheme.colorScheme.outline)).forEach { (label, n, color) ->
+            val frac by androidx.compose.animation.core.animateFloatAsState(n / rec.size.toFloat(), if (reduced) androidx.compose.animation.core.tween(0) else androidx.compose.animation.core.tween(700), label = "bar")
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 3.dp)) {
+                Text(stringResource(label), style = MaterialTheme.typography.bodySmall, modifier = Modifier.width(96.dp))
+                Box(Modifier.weight(1f).height(10.dp).background(MaterialTheme.colorScheme.surfaceVariant, androidx.compose.foundation.shape.RoundedCornerShape(50))) {
+                    Box(Modifier.fillMaxHeight().fillMaxWidth(frac).background(color, androidx.compose.foundation.shape.RoundedCornerShape(50))) }
+                Text(" $n", style = MaterialTheme.typography.labelLarge, modifier = Modifier.width(36.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun HostResponsibilities() {
+    GlassCard {
+        Row(verticalAlignment = Alignment.CenterVertically) { LeadingBadge(Icons.Outlined.Shield, Tone.Good, 36.dp); Spacer(Modifier.width(10.dp))
+            Text(stringResource(R.string.host_resp_title), style = MaterialTheme.typography.titleSmall) }
+        listOf(R.string.host_resp_1, R.string.host_resp_2, R.string.host_resp_3, R.string.host_resp_4).forEach { Text("• " + stringResource(it), style = MaterialTheme.typography.bodyMedium) }
     }
 }

@@ -37,6 +37,7 @@ object Time {
         val m = Duration.between(t, Instant.now()).toMinutes()
         return when { m < 1 -> "just now"; m < 60 -> "$m min ago"; m < 1440 -> "${m / 60} h ago"; else -> display(iso) }
     }
+    fun secondsSince(iso: String?): Long = parse(iso)?.let { Duration.between(it, Instant.now()).seconds.coerceAtLeast(0) } ?: -1
     fun secondsUntil(iso: String?): Long = parse(iso)?.let { Duration.between(Instant.now(), it).seconds.coerceAtLeast(0) } ?: 0
 }
 

@@ -23,9 +23,11 @@ object Brand {
     val Forest = Color(0xFF051F20); val Pine = Color(0xFF0B2B26); val Spruce = Color(0xFF163832)
     val Moss = Color(0xFF235347); val Sage = Color(0xFF8EB69B); val Mint = Color(0xFFDAF1DE)
     val Danger = Color(0xFFB3261E); val Warning = Color(0xFF8A5A00)
-    // V1.1 premium palette: deep forest, emerald, neon mint, pearl white, charcoal.
-    val Emerald = Color(0xFF047857); val EmeraldBright = Color(0xFF34D399); val NeonMint = Color(0xFF7CFFC4)
-    val Pearl = Color(0xFFF7FAF8); val Charcoal = Color(0xFF1C2321)
+    // V1.2 website design language: emerald #059669, neon mint #6BFFCB, deep forest #071B17, charcoal #202725, pearl #F4F8F6.
+    val EmeraldBrand = Color(0xFF059669)
+    /** Text/buttons on light surfaces use emerald-700 so white-on-emerald stays WCAG AA (≥4.5:1); #059669 is 3.8:1. */
+    val Emerald = Color(0xFF047857); val EmeraldBright = Color(0xFF34D399); val NeonMint = Color(0xFF6BFFCB)
+    val DeepForest = Color(0xFF071B17); val Pearl = Color(0xFFF4F8F6); val Charcoal = Color(0xFF202725)
     val energyGlow = Brush.radialGradient(listOf(NeonMint.copy(alpha = 0.35f), Color.Transparent))
     val heroGradient = Brush.linearGradient(listOf(Moss, Pine, Forest))
 }
@@ -60,18 +62,29 @@ private val light = lightColorScheme(
     error = Brand.Danger, onError = Color.White, errorContainer = Color(0xFFFCE4E2), onErrorContainer = Color(0xFF5F1410),
 )
 private val dark = darkColorScheme(
-    primary = Brand.EmeraldBright, onPrimary = Brand.Forest, primaryContainer = Brand.Moss, onPrimaryContainer = Brand.Mint,
+    primary = Brand.NeonMint, onPrimary = Brand.DeepForest, primaryContainer = Color(0xFF0E4B3B), onPrimaryContainer = Brand.Mint,
     tertiary = Brand.NeonMint, onTertiary = Brand.Forest,
     secondary = Color(0xFFA9CDB5), onSecondary = Brand.Forest, secondaryContainer = Brand.Spruce, onSecondaryContainer = Brand.Mint,
-    background = Color(0xFF04191A), onBackground = Brand.Mint, surface = Color(0xFF0A2522), onSurface = Brand.Mint,
+    background = Brand.DeepForest, onBackground = Brand.Mint, surface = Color(0xFF0B231E), onSurface = Brand.Mint,
     surfaceVariant = Color(0xFF0D302A), onSurfaceVariant = Color(0xFFB4D0BF), surfaceContainer = Color(0xFF0D2C28),
     surfaceContainerHigh = Color(0xFF123832), outline = Color(0xFF7FA08F), outlineVariant = Color(0xFF24463E),
     error = Color(0xFFF2B8B5), onError = Color(0xFF601410), errorContainer = Color(0xFF8C1D18), onErrorContainer = Color(0xFFF9DEDC),
 )
 
+/** Smooth 300 ms theme transition: the key roles animate instead of snapping (no tree rebuild, no state loss). */
+@Composable
+private fun animated(target: androidx.compose.material3.ColorScheme): androidx.compose.material3.ColorScheme {
+    val spec = androidx.compose.animation.core.tween<Color>(300)
+    @Composable fun a(c: Color) = androidx.compose.animation.animateColorAsState(c, spec, label = "theme").value
+    return target.copy(primary = a(target.primary), onPrimary = a(target.onPrimary), primaryContainer = a(target.primaryContainer),
+        onPrimaryContainer = a(target.onPrimaryContainer), background = a(target.background), onBackground = a(target.onBackground),
+        surface = a(target.surface), onSurface = a(target.onSurface), surfaceVariant = a(target.surfaceVariant), onSurfaceVariant = a(target.onSurfaceVariant),
+        surfaceContainer = a(target.surfaceContainer), surfaceContainerHigh = a(target.surfaceContainerHigh), outlineVariant = a(target.outlineVariant))
+}
+
 @Composable
 fun NearVoltTheme(mode: String = "system", content: @Composable () -> Unit) {
     val darkMode = when (mode) { "dark" -> true; "light" -> false; else -> isSystemInDarkTheme() }
-    MaterialTheme(colorScheme = if (darkMode) dark else light, typography = type,
+    MaterialTheme(colorScheme = animated(if (darkMode) dark else light), typography = type,
         shapes = Shapes(small = RoundedCornerShape(10.dp), medium = RoundedCornerShape(16.dp), large = RoundedCornerShape(24.dp)), content = content)
 }

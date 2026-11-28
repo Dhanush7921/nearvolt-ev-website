@@ -63,7 +63,7 @@ class FindViewModel : ViewModel() {
     fun locate() = viewModelScope.launch {
         state.update { it.copy(locating = true, locationIssue = null) }
         when (val r = c.location.current()) {
-            is LocationResult.Found -> { state.update { it.copy(fix = r.fix, locating = false) }; search() }
+            is LocationResult.Found -> { state.update { it.copy(fix = r.fix, locating = false) }; c.discovery.update { it.copy(fix = r.fix) }; search() }
             LocationResult.PermissionDenied -> state.update { it.copy(locating = false, locationIssue = "DENIED") }
             LocationResult.ServicesOff -> state.update { it.copy(locating = false, locationIssue = "OFF") }
             LocationResult.Unavailable -> state.update { it.copy(locating = false, locationIssue = "UNAVAILABLE") }
@@ -72,7 +72,11 @@ class FindViewModel : ViewModel() {
     fun manual(input: String) = viewModelScope.launch {
         state.update { it.copy(locating = true, locationIssue = null) }
         val f = c.location.resolveManual(input)
-        if (f == null) state.update { it.copy(locating = false, locationIssue = "MANUAL_FAILED") } else { state.update { it.copy(fix = f, locating = false) }; search() }
+        if (f == null) state.update { it.copy(locating = false, locationIssue = "MANUAL_FAILED") } else {
+            state.update { it.copy(fix = f, locating = false) }; c.discovery.update { it.copy(fix = f) }
+            c.auth.currentUser?.uid?.let { uid -> c.accountStore.update(uid) { d -> com.nearvolt.ev.data.prefs.LocalRules.addRecent(d, input, System.currentTimeMillis()) } }
+            search()
+        }
     }
     fun setFilters(vehicleType: String?, connector: String?) { state.update { it.copy(vehicleType = vehicleType, connector = connector?.ifBlank { null }) }; search() }
     fun search() = viewModelScope.launch {
@@ -80,7 +84,8 @@ class FindViewModel : ViewModel() {
         val fix = s.fix ?: return@launch
         state.update { it.copy(loading = true, error = null) }
         when (val r = c.repo.nearby(fix.point, s.radiusKm, s.connector, s.vehicleType, s.exclude)) {
-            is ApiResult.Ok -> state.update { it.copy(loading = false, result = r.value, locationIssue = if (r.value.serviceArea == null) "OUTSIDE" else null) }
+            is ApiResult.Ok -> { state.update { it.copy(loading = false, result = r.value, locationIssue = if (r.value.serviceArea == null) "OUTSIDE" else null) }
+                c.discovery.update { it.copy(nearby = r.value, at = System.currentTimeMillis()) } }
             is ApiResult.Err -> state.update { it.copy(loading = false, error = r) }
         }
     }
@@ -96,6 +101,10 @@ class FindViewModel : ViewModel() {
         }
     }
     fun clearCreateError() = state.update { it.copy(createError = null) }
+    /** Server accepts 0.5–50 km (nearbyQuery schema); the UI clamps to that range. */
+    fun setRadius(km: Double) { state.update { it.copy(radiusKm = km.coerceIn(1.0, 50.0)) }; search() }
+    /** Reuse the session's last fix (in-memory only) so Map/Home/Emergency don't re-ask for GPS on every visit. */
+    fun adoptCachedFix() { val snap = c.discovery.value; if (state.value.fix == null && snap.fix != null) { state.update { it.copy(fix = snap.fix, result = snap.nearby) }; search() } }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -190,7 +199,7 @@ fun FindScreen(app: AppViewModel, exclude: String?, openRequest: (String) -> Uni
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun Filters(s: FindState, vm: FindViewModel) {
+internal fun Filters(s: FindState, vm: FindViewModel) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FilterChip(selected = s.vehicleType == null, onClick = { vm.setFilters(null, s.connector) }, label = { Text(stringResource(R.string.filter_any_vehicle)) })
@@ -201,7 +210,7 @@ private fun Filters(s: FindState, vm: FindViewModel) {
 }
 
 @Composable
-private fun HostCard(h: HostSummary, onClick: () -> Unit) {
+internal fun HostCard(h: HostSummary, onClick: () -> Unit) {
     val status = when { h.bookableNow -> stringResource(R.string.host_status_available) to Tone.Good; !h.openNow -> stringResource(R.string.host_status_closed) to Tone.Neutral; else -> stringResource(R.string.host_status_unavailable) to Tone.Warn }
     NvCard(onClick = onClick, modifier = Modifier.semantics { contentDescription = "${h.displayName}, ${Labels.km(h.straightLineKm)}, ${status.first}" }) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -215,7 +224,7 @@ private fun HostCard(h: HostSummary, onClick: () -> Unit) {
 }
 
 @Composable
-private fun HostDetail(h: HostSummary, s: FindState, batterySupported: Boolean, onRequest: (String?, Int?) -> Unit) {
+internal fun HostDetail(h: HostSummary, s: FindState, batterySupported: Boolean, favourite: Boolean = false, onFavourite: (() -> Unit)? = null, onRequest: (String?, Int?) -> Unit) {
     var confirmed by remember { mutableStateOf(false) }
     var battery by remember { mutableFloatStateOf(20f) }
     var batteryConfirmed by remember { mutableStateOf(false) }
@@ -223,7 +232,17 @@ private fun HostDetail(h: HostSummary, s: FindState, batterySupported: Boolean, 
     val connector = s.connector ?: h.connectors.firstOrNull().orEmpty()
     val compatible = (s.connector == null || h.connectors.contains(s.connector)) && (s.vehicleType == null || h.vehicleTypes.contains(s.vehicleType))
     Column(Modifier.padding(horizontal = 24.dp).padding(bottom = 32.dp).navigationBarsPadding(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text(h.displayName, style = MaterialTheme.typography.headlineSmall)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            LeadingBadge(Icons.Outlined.EvStation, if (h.bookableNow) Tone.Good else Tone.Neutral, 48.dp); Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(h.displayName, style = MaterialTheme.typography.headlineSmall)
+                StatusPill(stringResource(if (h.bookableNow) R.string.host_status_available else R.string.host_status_unavailable), if (h.bookableNow) Tone.Good else Tone.Neutral)
+            }
+            if (onFavourite != null) IconButton(onClick = onFavourite) {
+                Icon(if (favourite) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder, stringResource(if (favourite) R.string.fav_remove else R.string.fav_add), tint = MaterialTheme.colorScheme.primary)
+            }
+        }
+        h.availabilityUpdatedAt?.let { Text(stringResource(R.string.data_updated, Time.ago(it)), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         Text(stringResource(R.string.detail_distance, Labels.km(h.straightLineKm)), style = MaterialTheme.typography.bodyMedium)
         DetailRow(stringResource(R.string.detail_power), "${Labels.kw(h.powerKw)} · ${if (h.phase == "three") "3-phase" else "1-phase"} · ${h.chargerType}")
         DetailRow(stringResource(R.string.detail_connectors), h.connectors.joinToString { Labels.connector(it) })
@@ -255,7 +274,7 @@ fun DetailRow(label: String, value: String) {
 }
 
 @Composable
-private fun ManualLocationDialog(onDismiss: () -> Unit, onSubmit: (String) -> Unit) {
+internal fun ManualLocationDialog(onDismiss: () -> Unit, onSubmit: (String) -> Unit) {
     var text by remember { mutableStateOf("") }
     AlertDialog(onDismissRequest = onDismiss, title = { Text(stringResource(R.string.manual_title)) },
         text = { Column { Text(stringResource(R.string.manual_body), style = MaterialTheme.typography.bodyMedium); Spacer(Modifier.height(8.dp))

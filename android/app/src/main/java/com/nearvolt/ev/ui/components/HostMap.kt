@@ -37,6 +37,7 @@ import org.maplibre.geojson.Point
 private const val STYLE_LIGHT = "https://tiles.openfreemap.org/styles/positron"
 private const val STYLE_DARK = "https://tiles.openfreemap.org/styles/fiord"
 private const val SRC_HOSTS = "nv-hosts"; private const val SRC_ME = "nv-me"
+private const val LAYER_CLUSTER = "nv-host-cluster"
 private const val LAYER_AREA = "nv-host-area"; private const val LAYER_DOT = "nv-host-dot"; private const val LAYER_SEL = "nv-host-selected"; private const val LAYER_ME = "nv-me"
 
 @Composable
@@ -51,7 +52,8 @@ fun rememberReducedMotion(): Boolean {
  */
 @SuppressLint("ClickableViewAccessibility")
 @Composable
-fun HostMap(hosts: List<HostSummary>, me: ApiLatLng?, selectedId: String?, dark: Boolean, onSelect: (HostSummary) -> Unit, modifier: Modifier = Modifier) {
+fun HostMap(hosts: List<HostSummary>, me: ApiLatLng?, selectedId: String?, dark: Boolean, onSelect: (HostSummary) -> Unit, modifier: Modifier = Modifier,
+            fullScreen: Boolean = false, recenterKey: Int = 0, onFailed: () -> Unit = {}) {
     val ctx = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val reduced = rememberReducedMotion()
@@ -60,6 +62,7 @@ fun HostMap(hosts: List<HostSummary>, me: ApiLatLng?, selectedId: String?, dark:
     var style by remember { mutableStateOf<Style?>(null) }
     val currentHosts by rememberUpdatedState(hosts)
     val currentOnSelect by rememberUpdatedState(onSelect)
+    val currentOnFailed by rememberUpdatedState(onFailed)
 
     val mapView = remember {
         MapLibre.getInstance(ctx)
@@ -67,11 +70,17 @@ fun HostMap(hosts: List<HostSummary>, me: ApiLatLng?, selectedId: String?, dark:
             onCreate(null)
             // Let the map take drag gestures instead of the scrolling list around it.
             setOnTouchListener { v, _ -> v.parent?.requestDisallowInterceptTouchEvent(true); false }
-            addOnDidFailLoadingMapListener { failed = true }
+            addOnDidFailLoadingMapListener { failed = true; currentOnFailed() }
             getMapAsync { m ->
-                m.uiSettings.isRotateGesturesEnabled = false; m.uiSettings.isTiltGesturesEnabled = false
+                m.uiSettings.isRotateGesturesEnabled = fullScreen; m.uiSettings.isTiltGesturesEnabled = false
+                m.uiSettings.isCompassEnabled = fullScreen
+                if (fullScreen) { val d = ctx.resources.displayMetrics.density; m.uiSettings.setCompassMargins(0, (150 * d).toInt(), (16 * d).toInt(), 0) }
                 m.addOnMapClickListener { pt ->
-                    val hit = m.queryRenderedFeatures(m.projection.toScreenLocation(pt), LAYER_AREA, LAYER_DOT).firstOrNull()
+                    val screen = m.projection.toScreenLocation(pt)
+                    // Tapping a cluster zooms in to reveal its hosts.
+                    m.queryRenderedFeatures(screen, LAYER_CLUSTER).firstOrNull()?.let {
+                        val u = CameraUpdateFactory.newLatLngZoom(pt, m.cameraPosition.zoom + 2); if (reduced) m.moveCamera(u) else m.easeCamera(u, 350); return@addOnMapClickListener true }
+                    val hit = m.queryRenderedFeatures(screen, LAYER_AREA, LAYER_DOT).firstOrNull()
                     val id = hit?.getStringProperty("id")
                     currentHosts.firstOrNull { it.hostId == id }?.let { currentOnSelect(it); true } ?: false
                 }
@@ -94,7 +103,7 @@ fun HostMap(hosts: List<HostSummary>, me: ApiLatLng?, selectedId: String?, dark:
     LaunchedEffect(map, dark) {
         val m = map ?: return@LaunchedEffect
         style = null
-        m.setStyle(Style.Builder().fromUri(if (dark) STYLE_DARK else STYLE_LIGHT)) { s -> addLayers(s, dark); style = s; failed = false }
+        m.setStyle(Style.Builder().fromUri(if (dark) STYLE_DARK else STYLE_LIGHT)) { s -> addLayers(s, dark, fullScreen); style = s; failed = false }
     }
     // Data + camera.
     LaunchedEffect(style, hosts, me) {
@@ -111,12 +120,32 @@ fun HostMap(hosts: List<HostSummary>, me: ApiLatLng?, selectedId: String?, dark:
         }
         if (reduced) m.moveCamera(update) else m.easeCamera(update, 700)
     }
+    LaunchedEffect(recenterKey) {
+        if (recenterKey == 0) return@LaunchedEffect
+        val p = me ?: return@LaunchedEffect
+        map?.let { m -> val u = CameraUpdateFactory.newLatLngZoom(LatLng(p.lat, p.lng), 13.5); if (reduced) m.moveCamera(u) else m.easeCamera(u, 500) }
+    }
     LaunchedEffect(style, selectedId) {
-        (style?.getLayer(LAYER_SEL) as? CircleLayer)?.setFilter(eq(get("id"), literal(selectedId ?: "")))
+        val sel = style?.getLayer(LAYER_SEL) as? CircleLayer
+        sel?.setFilter(eq(get("id"), literal(selectedId ?: "")))
+        // Marker selection pop: 11dp → 15dp → 11dp spring (skipped with reduced motion).
+        if (sel != null && selectedId != null && !reduced) {
+            val a = androidx.compose.animation.core.Animatable(11f)
+            a.animateTo(15f, androidx.compose.animation.core.tween(140)) { sel.setProperties(circleRadius(value)) }
+            a.animateTo(11f, androidx.compose.animation.core.spring(dampingRatio = 0.45f)) { sel.setProperties(circleRadius(value)) }
+        }
         val h = hosts.firstOrNull { it.hostId == selectedId }?.approxArea ?: return@LaunchedEffect
         map?.let { m -> val u = CameraUpdateFactory.newLatLng(LatLng(h.lat, h.lng)); if (reduced) m.moveCamera(u) else m.animateCamera(u, 450) }
     }
 
+    if (fullScreen) {
+        Box(modifier) {
+            AndroidView({ mapView }, Modifier.fillMaxSize())
+            Text("© OpenFreeMap © OpenMapTiles © OpenStreetMap contributors", style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.align(androidx.compose.ui.Alignment.BottomStart).padding(start = 92.dp, bottom = 6.dp))
+        }
+        return
+    }
     Column(modifier) {
         Box(Modifier.fillMaxWidth().height(260.dp).clip(RoundedCornerShape(20.dp))) {
             AndroidView({ mapView }, Modifier.fillMaxSize())
@@ -129,15 +158,25 @@ fun HostMap(hosts: List<HostSummary>, me: ApiLatLng?, selectedId: String?, dark:
     }
 }
 
-private fun addLayers(s: Style, dark: Boolean) {
-    val emerald = if (dark) "#34D399" else "#059669"; val muted = if (dark) "#6B8A80" else "#8A9A93"; val mint = "#7CFFC4"
-    s.addSource(GeoJsonSource(SRC_HOSTS)); s.addSource(GeoJsonSource(SRC_ME))
+private fun addLayers(s: Style, dark: Boolean, cluster: Boolean = false) {
+    val emerald = if (dark) "#34D399" else "#059669"; val muted = if (dark) "#6B8A80" else "#8A9A93"; val mint = "#6BFFCB"
+    s.addSource(if (cluster) GeoJsonSource(SRC_HOSTS, org.maplibre.android.style.sources.GeoJsonOptions().withCluster(true).withClusterRadius(48).withClusterMaxZoom(14))
+        else GeoJsonSource(SRC_HOSTS))
+    s.addSource(GeoJsonSource(SRC_ME))
     // 800 m expressed in pixels at Visakhapatnam's latitude (~17.7°N), scaled exponentially with zoom.
     val areaRadius = interpolate(exponential(2), zoom(), stop(10, 5.5f), stop(16, 352f))
     val colour = switchCase(get("bookable"), literal(emerald), literal(muted))
+    val single = not(has("point_count"))
     s.addLayer(CircleLayer(LAYER_AREA, SRC_HOSTS).withProperties(circleRadius(areaRadius), circleColor(colour), circleOpacity(0.18f),
-        circleStrokeColor(colour), circleStrokeWidth(1.5f), circleStrokeOpacity(0.6f)))
-    s.addLayer(CircleLayer(LAYER_DOT, SRC_HOSTS).withProperties(circleRadius(7f), circleColor(colour), circleStrokeColor("#FFFFFF"), circleStrokeWidth(2f)))
+        circleStrokeColor(colour), circleStrokeWidth(1.5f), circleStrokeOpacity(0.6f)).withFilter(single))
+    s.addLayer(CircleLayer(LAYER_DOT, SRC_HOSTS).withProperties(circleRadius(7f), circleColor(colour), circleStrokeColor("#FFFFFF"), circleStrokeWidth(2f)).withFilter(single))
+    if (cluster) {
+        s.addLayer(CircleLayer(LAYER_CLUSTER, SRC_HOSTS).withProperties(circleRadius(18f), circleColor(emerald), circleOpacity(0.9f),
+            circleStrokeColor(mint), circleStrokeWidth(2f)).withFilter(has("point_count")))
+        s.addLayer(org.maplibre.android.style.layers.SymbolLayer("$LAYER_CLUSTER-count", SRC_HOSTS).withProperties(
+            textField(toString(get("point_count"))), textFont(arrayOf("Noto Sans Bold")), textSize(13f), textColor("#FFFFFF"), textAllowOverlap(true), textIgnorePlacement(true))
+            .withFilter(has("point_count")))
+    }
     s.addLayer(CircleLayer(LAYER_SEL, SRC_HOSTS).withProperties(circleRadius(11f), circleColor(mint), circleStrokeColor(emerald), circleStrokeWidth(3f))
         .withFilter(eq(get("id"), literal(""))))
     s.addLayer(CircleLayer(LAYER_ME, SRC_ME).withProperties(circleRadius(8f), circleColor("#2563EB"), circleStrokeColor("#FFFFFF"), circleStrokeWidth(3f)))

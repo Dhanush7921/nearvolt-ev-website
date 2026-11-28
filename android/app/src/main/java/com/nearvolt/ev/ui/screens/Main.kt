@@ -38,7 +38,8 @@ fun MainScreen(vm: AppViewModel) {
     val nav = rememberNavController()
     val tabs = if (isHost) listOf(Tab("dashboard", R.string.tab_dashboard, Icons.Outlined.SpaceDashboard), Tab("listing", R.string.tab_listing, Icons.Outlined.EvStation),
         Tab("alerts", R.string.tab_alerts, Icons.Outlined.Notifications), Tab("account", R.string.tab_account, Icons.Outlined.Person))
-    else listOf(Tab("find", R.string.tab_find, Icons.Outlined.Search), Tab("activity", R.string.tab_activity, Icons.Outlined.History),
+    // V1.2: Home | Map | Activity | Alerts | Account. The former "find" tab stays as a route (Home → Nearby, request alternatives).
+    else listOf(Tab("home", R.string.tab_home, Icons.Outlined.Home), Tab("map", R.string.tab_map, Icons.Outlined.Map), Tab("activity", R.string.tab_activity, Icons.Outlined.History),
         Tab("alerts", R.string.tab_alerts, Icons.Outlined.Notifications), Tab("account", R.string.tab_account, Icons.Outlined.Person))
     val entry by nav.currentBackStackEntryAsState()
     val current = entry?.destination?.route?.substringBefore("?")
@@ -69,12 +70,22 @@ fun MainScreen(vm: AppViewModel) {
                 FindScreen(vm, exclude = e.arguments?.getString("exclude"), openRequest = { nav.navigate("request/$it") })
             }
             nvComposable("find") { FindScreen(vm, null, openRequest = { nav.navigate("request/$it") }) }
+            val go: (String) -> Unit = { r -> nav.navigate(r) { launchSingleTop = true } }
+            val tab: (String) -> Unit = { r -> nav.navigate(r) { popUpTo(nav.graph.findStartDestination().id) { saveState = true }; launchSingleTop = true; restoreState = true } }
+            nvComposable("home") { HomeScreen(vm, openMap = { tab("map") }, openFind = { go("find") }, openGarage = { go("garage") }, openFavourites = { go("favourites") },
+                openSafety = { go("safety") }, openEmergency = { go("emergency") }, openAlerts = { tab("alerts") }, openAccount = { tab("account") },
+                openRequest = { nav.navigate("request/$it") }, openActivity = { tab("activity") }) }
+            nvComposable("map") { MapScreen(vm, openRequest = { nav.navigate("request/$it") }, openEmergency = { go("emergency") }, openAlerts = { tab("alerts") }) }
+            nvComposable("garage") { GarageScreen(vm, onBack = { nav.popBackStack() }) }
+            nvComposable("favourites") { FavouritesScreen(vm, onBack = { nav.popBackStack() }, openMap = { tab("map") }) }
+            nvComposable("safety") { SafetyScreen(onBack = { nav.popBackStack() }, openSupport = { go("support") }) }
+            nvComposable("emergency") { EmergencyScreen(vm, onBack = { nav.popBackStack() }, openRequest = { nav.navigate("request/$it") }) }
             nvComposable("activity") { HistoryScreen(asRole = "customer", open = { nav.navigate("request/$it") }) }
             nvComposable("dashboard") { HostDashboard(openRequest = { nav.navigate("request/$it") }, openListing = { nav.navigate("listing") }, openHistory = { nav.navigate("hostHistory") }) }
             nvComposable("hostHistory") { HistoryScreen(asRole = "host", open = { nav.navigate("request/$it") }, onBack = { nav.popBackStack() }) }
             nvComposable("listing") { ListingEditor() }
             nvComposable("alerts") { NotificationsScreen(open = { nav.navigate("request/$it") }) }
-            nvComposable("account") { AccountScreen(vm, openSupport = { nav.navigate("support") }) }
+            nvComposable("account") { AccountScreen(vm, openSupport = { nav.navigate("support") }, openGarage = { go("garage") }, openFavourites = { go("favourites") }, openSafety = { go("safety") }) }
             nvComposable("support") { SupportScreen(onBack = { nav.popBackStack() }) }
             nvComposable("request/{id}") { e ->
                 RequestScreen(id = e.arguments?.getString("id").orEmpty(), onBack = { nav.popBackStack() },

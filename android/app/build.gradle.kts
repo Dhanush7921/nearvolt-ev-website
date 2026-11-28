@@ -46,8 +46,8 @@ android {
         applicationId = "com.nearvolt.ev"
         minSdk = 26
         targetSdk = 36
-        versionCode = 2
-        versionName = "1.1.0"
+        versionCode = 3
+        versionName = "1.2.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // Google sign-in needs the OAuth *web* client ID from the Firebase project.
         androidResources.localeFilters += listOf("en", "te", "hi")
@@ -129,7 +129,7 @@ android {
     }
     // MapLibre ships native code for every ABI. Per-ABI APKs keep sideload downloads small; a universal APK is still produced.
     splits { abi { isEnable = true; reset(); include("arm64-v8a", "armeabi-v7a", "x86_64"); isUniversalApk = true } }
-    testOptions { unitTests.isReturnDefaultValues = true }
+    testOptions { unitTests.isReturnDefaultValues = true; unitTests.isIncludeAndroidResources = true }
     lint {
         abortOnError = true
         checkReleaseBuilds = true
@@ -200,6 +200,10 @@ dependencies {
     debugImplementation(libs.compose.ui.test.manifest)
 
     testImplementation(libs.junit)
+    // JVM Compose UI tests (themes, reduced motion, components) via Robolectric — no emulator needed.
+    testImplementation(libs.robolectric)
+    testImplementation(platform(libs.compose.bom))
+    testImplementation(libs.compose.ui.test.junit4)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.okhttp.mockwebserver)
     androidTestImplementation(platform(libs.compose.bom))

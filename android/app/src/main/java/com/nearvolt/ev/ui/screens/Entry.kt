@@ -94,6 +94,7 @@ fun SignInScreen(vm: AppViewModel) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var registering by remember { mutableStateOf(false) }
+    var showPw by remember { mutableStateOf(false) }
     var phone by remember { mutableStateOf("") }
     var otp by remember { mutableStateOf("") }
     var resendIn by remember { mutableIntStateOf(0) }
@@ -132,7 +133,10 @@ fun SignInScreen(vm: AppViewModel) {
                         OutlinedTextField(email, { email = it.trim() }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.field_email)) }, singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email))
                         OutlinedTextField(password, { password = it.take(128) }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.field_password)) }, singleLine = true,
-                            visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                            visualTransformation = if (showPw) androidx.compose.ui.text.input.VisualTransformation.None else androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                            trailingIcon = { IconButton(onClick = { showPw = !showPw }) { Icon(if (showPw) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                                stringResource(if (showPw) R.string.pw_hide else R.string.pw_show)) } },
                             supportingText = { if (registering) Text(stringResource(R.string.password_rule)) })
                         val emailOk = Regex("^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$").matches(email)
                         val pwOk = if (registering) password.length >= 8 && password.any(Char::isDigit) && password.any(Char::isLetter) else password.isNotEmpty()
@@ -213,6 +217,7 @@ fun ConsentScreen(vm: AppViewModel) {
     var error by remember { mutableStateOf<String?>(null) }
     val notifPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
     Column(Modifier.fillMaxSize().systemBarsPadding().verticalScroll(rememberScrollState()).padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        OnboardingProgress(2)
         Text(stringResource(R.string.consent_title), style = MaterialTheme.typography.headlineMedium)
         NvCard {
             Text(stringResource(R.string.consent_role_title), style = MaterialTheme.typography.titleMedium)
@@ -250,6 +255,7 @@ fun SetupScreen(vm: AppViewModel) {
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     Column(Modifier.fillMaxSize().systemBarsPadding().imePadding().verticalScroll(rememberScrollState()).padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        OnboardingProgress(3)
         Text(stringResource(R.string.setup_title), style = MaterialTheme.typography.headlineMedium)
         if (me?.role == null) {
             Text(stringResource(R.string.setup_role_q), style = MaterialTheme.typography.titleMedium)
@@ -320,6 +326,22 @@ fun SplashScreen() {
             Spacer(Modifier.height(28.dp))
             com.nearvolt.ev.ui.components.EnergyFlowBar(Modifier.width(160.dp), 4.dp)
             if (slow) { Spacer(Modifier.height(14.dp)); Text(stringResource(R.string.splash_waking), style = MaterialTheme.typography.bodySmall, color = com.nearvolt.ev.ui.theme.Brand.Sage) }
+        }
+    }
+}
+
+/** Onboarding progress: 1 Sign in · 2 Consent · 3 Profile (animated selection indicator). */
+@Composable
+fun OnboardingProgress(step: Int) {
+    val labels = listOf(R.string.ob_step_signin, R.string.ob_step_consent, R.string.ob_step_profile)
+    Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        labels.forEachIndexed { i, l ->
+            val on = i + 1 <= step
+            val w by androidx.compose.animation.animateColorAsState(if (on) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant, label = "ob")
+            Column(Modifier.weight(1f)) {
+                Box(Modifier.fillMaxWidth().height(4.dp).background(w, androidx.compose.foundation.shape.RoundedCornerShape(50)))
+                Text(stringResource(l), style = MaterialTheme.typography.labelSmall, color = if (i + 1 == step) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
     }
 }

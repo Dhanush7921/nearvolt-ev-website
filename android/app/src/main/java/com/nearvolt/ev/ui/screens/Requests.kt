@@ -10,6 +10,9 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.background
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -128,6 +131,7 @@ fun RequestScreen(id: String, onBack: () -> Unit, findAlternatives: (String) -> 
                 if (r.status == "CHARGING") ChargingProgress(r)
                 InlineMessage(s.actionError)
                 Actions(r, s.busy, onAct = { a -> when (a) { "cancel", "reject", "dispute" -> confirm = a; "start" -> if (r.pinStatus != null) pinEntry = true else vm.act("start"); else -> vm.act(a) } }, findAlternatives = { findAlternatives(r.hostId) })
+                if (r.status == "COMPLETED") CompletionSummary(r)
                 if (r.status == "COMPLETED" && !r.feedbackGiven) RateCard(busy = s.busy == "rate") { st, c -> vm.rate(st, c) }
                 Timeline(r)
                 if (r.status in RequestText.ACTIVE) SafetyCard()
@@ -235,16 +239,26 @@ class HistoryViewModel : ViewModel() {
 fun HistoryScreen(asRole: String, open: (String) -> Unit, onBack: (() -> Unit)? = null, vm: HistoryViewModel = viewModel(key = "hist_$asRole")) {
     val items by vm.items.collectAsStateWithLifecycle(); val err by vm.error.collectAsStateWithLifecycle(); val loading by vm.loading.collectAsStateWithLifecycle()
     LaunchedEffect(asRole) { vm.load(asRole, reset = true) }
+    var filter by rememberSaveable { mutableStateOf("all") }
+    val shown = when (filter) { "active" -> items.filter { it.status in RequestText.ACTIVE }; "completed" -> items.filter { it.status == "COMPLETED" }
+        "cancelled" -> items.filter { it.status in setOf("CANCELLED", "REJECTED", "EXPIRED") }; else -> items }
     Column {
         if (onBack != null) TopAppBar(title = { Text(stringResource(R.string.history_title)) }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.action_back)) } })
         LazyColumn(contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             if (onBack == null) item { Text(stringResource(R.string.history_title), style = MaterialTheme.typography.headlineMedium) }
+            item {
+                androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(listOf("all" to R.string.filter_all, "active" to R.string.filter_active, "completed" to R.string.filter_completed, "cancelled" to R.string.filter_cancelled), key = { it.first }) { (k, l) ->
+                        FilterChip(filter == k, { filter = k }, label = { Text(stringResource(l)) }) }
+                }
+            }
+            if (items.isNotEmpty() && shown.isEmpty()) item { Text(stringResource(R.string.filter_none), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             when {
                 err != null && items.isEmpty() -> item { ErrorState(err!!) { vm.load(asRole, true) } }
                 loading && items.isEmpty() -> item { LoadingState() }
                 items.isEmpty() -> item { EmptyState(stringResource(R.string.history_empty_title), stringResource(R.string.history_empty_body)) }
                 else -> {
-                    items(items, key = { it.id }) { r ->
+                    items(shown, key = { it.id }) { r ->
                         NvCard(onClick = { open(r.id) }, modifier = Modifier.animateItem().sharedElement("req-${r.id}")) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 LeadingBadge(if (r.status == "COMPLETED") Icons.Outlined.TaskAlt else if (r.status in RequestText.ACTIVE) Icons.Outlined.ElectricBolt else Icons.Outlined.History, RequestText.tone(r.status))
@@ -284,8 +298,9 @@ private fun SessionPinCard(r: ChargeRequest, refreshing: Boolean, onRefresh: () 
 @Composable
 private fun ChargingProgress(r: ChargeRequest) {
     val startedAt = r.history.lastOrNull { it.to == "CHARGING" }?.at
-    var elapsed by remember(startedAt) { mutableLongStateOf(-Time.secondsUntil(startedAt)) }
-    LaunchedEffect(startedAt) { while (true) { elapsed = -Time.secondsUntil(startedAt); delay(1000) } }
+    // Fix (V1.1 bug): secondsUntil() clamps past times to 0, so the timer always showed 0:00:00.
+    var elapsed by remember(startedAt) { mutableLongStateOf(Time.secondsSince(startedAt)) }
+    LaunchedEffect(startedAt) { while (true) { elapsed = Time.secondsSince(startedAt); delay(1000) } }
     NvCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Outlined.ElectricBolt, null, tint = MaterialTheme.colorScheme.primary)
@@ -296,5 +311,28 @@ private fun ChargingProgress(r: ChargeRequest) {
         Spacer(Modifier.height(10.dp))
         com.nearvolt.ev.ui.components.EnergyFlowBar(Modifier.fillMaxWidth())
         Text(stringResource(R.string.charging_no_metering), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/** Session completion: success animation + summary built only from server timeline data (no energy, bill or payment figures). */
+@Composable
+private fun CompletionSummary(r: ChargeRequest) {
+    val reduced = rememberReducedMotion()
+    val scale = remember { androidx.compose.animation.core.Animatable(if (reduced) 1f else 0.4f) }
+    LaunchedEffect(r.id) { if (!reduced) scale.animateTo(1f, androidx.compose.animation.core.spring(dampingRatio = 0.5f, stiffness = 300f)) }
+    val start = r.history.lastOrNull { it.to == "CHARGING" }?.at; val end = r.history.lastOrNull { it.to == "COMPLETED" }?.at
+    val secs = if (start != null && end != null) runCatching { java.time.Duration.between(java.time.Instant.parse(start), java.time.Instant.parse(end)).seconds }.getOrNull() else null
+    NvCard {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(52.dp).graphicsLayer { scaleX = scale.value; scaleY = scale.value }.background(MaterialTheme.colorScheme.primaryContainer, androidx.compose.foundation.shape.CircleShape),
+                contentAlignment = Alignment.Center) { Icon(Icons.Outlined.TaskAlt, null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(30.dp)) }
+            Spacer(Modifier.width(14.dp))
+            Column {
+                Text(stringResource(R.string.summary_title), style = MaterialTheme.typography.titleMedium)
+                secs?.let { Text(stringResource(R.string.summary_duration, "%d:%02d:%02d".format(it / 3600, it / 60 % 60, it % 60)), style = MaterialTheme.typography.bodyMedium) }
+                Text("${Labels.vehicle(r.vehicleType)} · ${Labels.connector(r.connector)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        Text(stringResource(R.string.summary_note), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

@@ -50,7 +50,16 @@ class NotificationsViewModel : ViewModel() {
 fun NotificationsScreen(open: (String) -> Unit, vm: NotificationsViewModel = viewModel()) {
     val items by vm.items.collectAsStateWithLifecycle(); val err by vm.error.collectAsStateWithLifecycle(); val loading by vm.loading.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { vm.load() }
+    var cat by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("all") }
+    fun catOf(t: String) = when { t.contains("safety") -> "safety"; t.startsWith("request") -> "requests"; t.startsWith("account") || t.startsWith("host") -> "account"; else -> "system" }
+    val shown = if (cat == "all") items else items.filter { catOf(it.type) == cat }
     LazyColumn(contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        item {
+            androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(listOf("all" to R.string.filter_all, "requests" to R.string.alerts_cat_requests, "account" to R.string.alerts_cat_account, "safety" to R.string.alerts_cat_safety, "system" to R.string.alerts_cat_system), key = { it.first }) { (k, l) ->
+                    FilterChip(cat == k, { cat = k }, label = { Text(stringResource(l)) }) }
+            }
+        }
         item {
             HeroHeader(stringResource(R.string.alerts_title), items.count { !it.read }.let { n -> androidx.compose.ui.res.pluralStringResource(R.plurals.alerts_hero_sub, n, n) })
             if (items.any { !it.read }) TextButton(onClick = vm::readAll) { Text(stringResource(R.string.alerts_read_all)) }
@@ -59,7 +68,7 @@ fun NotificationsScreen(open: (String) -> Unit, vm: NotificationsViewModel = vie
             err != null && items.isEmpty() -> item { ErrorState(err!!) { vm.load() } }
             loading && items.isEmpty() -> item { LoadingState() }
             items.isEmpty() -> item { EmptyState(stringResource(R.string.alerts_empty_title), stringResource(R.string.alerts_empty_body)) }
-            else -> items(items, key = { it.id }) { n ->
+            else -> items(shown, key = { it.id }) { n ->
                 NvCard(onClick = n.requestId?.let { id -> { open(id) } }, modifier = Modifier.animateItem()) {
                     Row(verticalAlignment = Alignment.Top) {
                         val (ic, tone) = when {
@@ -84,7 +93,7 @@ fun NotificationsScreen(open: (String) -> Unit, vm: NotificationsViewModel = vie
 }
 
 @Composable
-fun AccountScreen(app: AppViewModel, openSupport: () -> Unit) {
+fun AccountScreen(app: AppViewModel, openSupport: () -> Unit, openGarage: () -> Unit = {}, openFavourites: () -> Unit = {}, openSafety: () -> Unit = {}) {
     val s by app.state.collectAsStateWithLifecycle()
     val me = s.me ?: return
     val ctx = LocalContext.current
@@ -108,11 +117,33 @@ fun AccountScreen(app: AppViewModel, openSupport: () -> Unit) {
             TextButton(onClick = { editing = true }) { Text(stringResource(R.string.account_edit)) }
         }
         if (me.phone == null && s.config?.featureFlags?.get("phoneLogin") == true) SecondaryButton(stringResource(R.string.account_link_phone), { linkPhone = true }, icon = Icons.Outlined.Phone)
+        if (me.role != "host") {
+            SecondaryButton(stringResource(R.string.garage_title), openGarage, icon = Icons.Outlined.DirectionsCar)
+            SecondaryButton(stringResource(R.string.fav_title), openFavourites, icon = Icons.Outlined.FavoriteBorder)
+        }
+        SecondaryButton(stringResource(R.string.safety_centre), openSafety, icon = Icons.Outlined.Shield)
         SectionTitle(stringResource(R.string.account_appearance))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf("system" to R.string.theme_system, "light" to R.string.theme_light, "dark" to R.string.theme_dark).forEach { (k, l) -> FilterChip(s.theme == k, { app.setTheme(k) }, label = { Text(stringResource(l)) }) }
         }
+        val graphics by c.prefs.graphics.collectAsStateWithLifecycle("adaptive")
+        SectionTitle(stringResource(R.string.graphics_title))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf("adaptive" to R.string.graphics_adaptive, "ultra" to R.string.graphics_ultra, "lite" to R.string.graphics_lite).forEach { (k, l) ->
+                FilterChip(graphics == k, { scope.launch { c.prefs.setGraphics(k) } }, label = { Text(stringResource(l)) }) }
+        }
+        Text(stringResource(R.string.graphics_note), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        SectionTitle(stringResource(R.string.privacy_title))
+        SecondaryButton(stringResource(R.string.settings_notifications), {
+            runCatching { ctx.startActivity(android.content.Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, ctx.packageName)) }
+        }, icon = Icons.Outlined.Notifications)
+        SecondaryButton(stringResource(R.string.settings_location), {
+            runCatching { ctx.startActivity(android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.fromParts("package", ctx.packageName, null))) }
+        }, icon = Icons.Outlined.LocationOn)
+        val clearedMsg = stringResource(R.string.settings_cleared)
+        SecondaryButton(stringResource(R.string.settings_clear_local), { scope.launch { c.accountStore.wipe(me.uid); msg = clearedMsg } }, icon = Icons.Outlined.DeleteSweep)
         SectionTitle(stringResource(R.string.account_help))
+        SecondaryButton(stringResource(R.string.faq_title), openSafety, icon = Icons.Outlined.HelpOutline)
         SecondaryButton(stringResource(R.string.account_support), openSupport, icon = Icons.Outlined.SupportAgent)
         SecondaryButton(stringResource(R.string.link_privacy), { Links.open(ctx, Links.PRIVACY) }, icon = Icons.Outlined.PrivacyTip)
         SecondaryButton(stringResource(R.string.link_terms), { Links.open(ctx, Links.TERMS) }, icon = Icons.Outlined.Description)

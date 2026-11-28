@@ -36,6 +36,11 @@ import com.nearvolt.ev.ui.theme.NearVoltTheme
 @Composable
 fun NearVoltRoot(vm: AppViewModel) {
     val s by vm.state.collectAsStateWithLifecycle()
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val gMode by vm.container.prefs.graphics.collectAsStateWithLifecycle("adaptive")
+    val reduced = com.nearvolt.ev.ui.components.rememberReducedMotion()
+    val gSpec = remember(gMode, reduced) { com.nearvolt.ev.ui.components.resolveGraphics(gMode, ctx, reduced) }
+    androidx.compose.runtime.CompositionLocalProvider(com.nearvolt.ev.ui.components.LocalGraphics provides gSpec) {
     NearVoltTheme(s.theme) {
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             AnimatedContent(s.phase, transitionSpec = { fadeIn() togetherWith fadeOut() }, label = "phase") { phase ->
@@ -58,6 +63,7 @@ fun NearVoltRoot(vm: AppViewModel) {
             }
             s.emailLinkNeedsEmail?.let { link -> EmailConfirmDialog(onConfirm = { vm.completeLink(link, it) }) }
         }
+    }
     }
 }
 

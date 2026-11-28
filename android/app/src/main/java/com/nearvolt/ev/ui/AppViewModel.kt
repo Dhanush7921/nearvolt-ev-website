@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
 
 enum class Phase { Loading, NotConfigured, UpdateRequired, Maintenance, Onboarding, SignIn, VerifyEmail, Consent, Setup, Main, Error }
 
@@ -53,27 +54,33 @@ class AppViewModel : ViewModel() {
         }
     }
 
-    fun refresh() = viewModelScope.launch {
-        if (!container.auth.configured) { _state.update { it.copy(loading = false, phase = Phase.NotConfigured) }; return@launch }
+    private var refreshJob: kotlinx.coroutines.Job? = null
+    /** One refresh at a time: a new call cancels the previous one (prevents duplicate /config + /me bursts on resume). */
+    fun refresh() { refreshJob?.cancel(); refreshJob = viewModelScope.launch { doRefresh() } }
+
+    private suspend fun doRefresh() = kotlinx.coroutines.coroutineScope {
+        if (!container.auth.configured) { _state.update { it.copy(loading = false, phase = Phase.NotConfigured) }; return@coroutineScope }
+        // /me starts in parallel with /config (independent requests); its result is only used AFTER the update/maintenance gates pass.
+        val meJob = if (container.auth.currentUser != null && !container.auth.needsEmailVerification) async { container.repo.me() } else null
         val cfg = when (val c = container.repo.config()) {
             is ApiResult.Ok -> c.value
             is ApiResult.Err -> {
                 val msg = if (BuildConfig.API_BASE_URL.contains("invalid")) "This build has no server address configured (NV_PROD_API_BASE_URL)."
                     else if (c.isOffline) "Can't reach NEARVOLT servers. Check your internet connection and try again." else c.message
-                _state.update { it.copy(loading = false, phase = Phase.Error, message = msg) }; return@launch
+                meJob?.cancel(); _state.update { it.copy(loading = false, phase = Phase.Error, message = msg) }; return@coroutineScope
             }
         }
         val vc = BuildConfig.VERSION_CODE
         _state.update { it.copy(config = cfg, updateAvailable = vc < cfg.latestVersionCode) }
         when {
-            vc < cfg.minSupportedVersionCode -> return@launch done(Phase.UpdateRequired)
-            cfg.maintenance.enabled -> return@launch done(Phase.Maintenance)
+            vc < cfg.minSupportedVersionCode -> { meJob?.cancel(); return@coroutineScope done(Phase.UpdateRequired) }
+            cfg.maintenance.enabled -> { meJob?.cancel(); return@coroutineScope done(Phase.Maintenance) }
         }
         val onboarded = container.prefs.onboarded.first()
         val user = container.auth.currentUser
-        if (user == null) { done(if (onboarded) Phase.SignIn else Phase.Onboarding); pendingLink?.let { completeLink(it, null) }; return@launch }
-        if (container.auth.needsEmailVerification) return@launch done(Phase.VerifyEmail)
-        when (val m = container.repo.me()) {
+        if (user == null) { done(if (onboarded) Phase.SignIn else Phase.Onboarding); pendingLink?.let { completeLink(it, null) }; return@coroutineScope }
+        if (container.auth.needsEmailVerification) return@coroutineScope done(Phase.VerifyEmail)
+        when (val m = meJob?.await() ?: container.repo.me()) {
             // Never sign the user out silently: only a genuinely invalid session does that, and the reason is shown.
             is ApiResult.Err -> when (m.code) {
                 "SESSION_INVALID" -> { container.auth.signOut(); _state.update { it.copy(loading = false, phase = Phase.SignIn, message = m.message) } }
@@ -144,6 +151,8 @@ class AppViewModel : ViewModel() {
             else -> { pendingLink = null; _state.update { it.copy(emailLinkNeedsEmail = null) } }
         }
     }
-    fun signOut() = viewModelScope.launch { container.auth.signOut(); _state.update { AppState(loading = false, phase = Phase.SignIn, theme = it.theme, config = it.config) } }
-    fun deleted() = viewModelScope.launch { container.auth.localSignOutAfterDeletion(); _state.update { AppState(loading = false, phase = Phase.SignIn, theme = it.theme, config = it.config, message = "Your account was deleted.") } }
+    /** Wipes this account's device-local data (garage, favourites, recent searches) and the session discovery cache. */
+    private suspend fun wipeLocal() { container.auth.currentUser?.uid?.let { container.accountStore.wipe(it) }; container.discovery.value = com.nearvolt.ev.DiscoverySnapshot() }
+    fun signOut() = viewModelScope.launch { wipeLocal(); container.auth.signOut(); _state.update { AppState(loading = false, phase = Phase.SignIn, theme = it.theme, config = it.config) } }
+    fun deleted() = viewModelScope.launch { wipeLocal(); container.auth.localSignOutAfterDeletion(); _state.update { AppState(loading = false, phase = Phase.SignIn, theme = it.theme, config = it.config, message = "Your account was deleted.") } }
 }
