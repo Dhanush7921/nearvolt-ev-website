@@ -46,10 +46,11 @@ fun isDarkSurface() = MaterialTheme.colorScheme.background.luminance() < 0.5f
  * No backdrop blur (expensive and unsupported below API 31) — the glass look comes from layered translucency.
  */
 @Composable
-fun GlassCard(modifier: Modifier = Modifier, onClick: (() -> Unit)? = null, accent: Boolean = false, content: @Composable ColumnScope.() -> Unit) {
+fun GlassCard(modifier: Modifier = Modifier, onClick: (() -> Unit)? = null, accent: Boolean = false, overMap: Boolean = false, content: @Composable ColumnScope.() -> Unit) {
     val g = LocalGraphics.current
     val dark = isDarkSurface()
-    val base = if (dark) Color.White.copy(alpha = 0.06f) else Color.White.copy(alpha = 0.78f)
+    // Over busy map tiles, glass must stay legible: a near-opaque surface tint instead of a faint wash.
+    val base = when { overMap -> MaterialTheme.colorScheme.surface.copy(alpha = 0.94f); dark -> Color.White.copy(alpha = 0.06f); else -> Color.White.copy(alpha = 0.78f) }
     val edge = BorderStroke(1.dp, Brush.verticalGradient(listOf(
         (if (dark) Color.White else Brand.Emerald).copy(alpha = if (dark) 0.22f else 0.20f),
         Color.Transparent, (if (dark) Brand.NeonMint else Brand.Emerald).copy(alpha = if (accent) 0.45f else 0.10f))))

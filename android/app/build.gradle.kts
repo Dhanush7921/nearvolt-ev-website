@@ -127,6 +127,7 @@ android {
         if (prop("NV_I18N_DRAFT") == "true") res.srcDir("src/i18nDraft/res")
         if (prop("NV_I18N_SAFETY_REVIEWED") == "true") res.srcDir("src/i18nSafety/res")
     }
+    if (prop("NV_UI_TESTS") == "true") sourceSets.getByName("test") { java.srcDir("src/testUi/java") }
     // MapLibre ships native code for every ABI. Per-ABI APKs keep sideload downloads small; a universal APK is still produced.
     splits { abi { isEnable = true; reset(); include("arm64-v8a", "armeabi-v7a", "x86_64"); isUniversalApk = true } }
     testOptions { unitTests.isReturnDefaultValues = true; unitTests.isIncludeAndroidResources = true }
@@ -200,10 +201,13 @@ dependencies {
     debugImplementation(libs.compose.ui.test.manifest)
 
     testImplementation(libs.junit)
-    // JVM Compose UI tests (themes, reduced motion, components) via Robolectric — no emulator needed.
-    testImplementation(libs.robolectric)
-    testImplementation(platform(libs.compose.bom))
-    testImplementation(libs.compose.ui.test.junit4)
+    // JVM Compose UI tests (src/testUi) via Robolectric, opt-in with -PNV_UI_TESTS=true: they download ~100 MB of
+    // Android runtime jars on first run, so ordinary unit-test runs stay fast and offline-friendly.
+    if (prop("NV_UI_TESTS") == "true") {
+        testImplementation(libs.robolectric)
+        testImplementation(platform(libs.compose.bom))
+        testImplementation(libs.compose.ui.test.junit4)
+    }
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.okhttp.mockwebserver)
     androidTestImplementation(platform(libs.compose.bom))

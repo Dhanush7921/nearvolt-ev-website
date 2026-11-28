@@ -100,7 +100,7 @@ fun MapScreen(app: AppViewModel, openRequest: (String) -> Unit, openEmergency: (
 
         // ---- Top glass controls ----
         Column(Modifier.fillMaxWidth().statusBarsPadding().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            GlassCard {
+            GlassCard(overMap = true) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     LeadingBadge(Icons.Outlined.Map, Tone.Good, 36.dp); Spacer(Modifier.width(10.dp))
                     Column(Modifier.weight(1f)) {
@@ -134,7 +134,7 @@ fun MapScreen(app: AppViewModel, openRequest: (String) -> Unit, openEmergency: (
 
         // ---- Bottom summary ----
         Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            GlassCard {
+            GlassCard(overMap = true) {
                 when {
                     s.fix == null -> {
                         Text(stringResource(R.string.find_start_title), style = MaterialTheme.typography.titleMedium)
