@@ -55,6 +55,8 @@ jobs:
           VITE_PLAY_STORE_URL: ${{ vars.VITE_PLAY_STORE_URL }}
           VITE_APP_STORE_URL: ${{ vars.VITE_APP_STORE_URL }}
           VITE_CONTACT_EMAIL: ${{ vars.VITE_CONTACT_EMAIL }}
+          # Optional override; empty/unset uses the Render API default in src/config/site.ts
+          VITE_API_BASE: ${{ vars.VITE_API_BASE || 'https://nearvolt-api-0rxa.onrender.com' }}
 
       - uses: actions/configure-pages@v5
 

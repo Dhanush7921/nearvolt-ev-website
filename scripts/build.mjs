@@ -100,6 +100,9 @@ export function writeHtml({ outdir, base, metafile, dev = false, brand = 'NEARVO
 export function copyPublic(outdir) {
   const pub = path.join(root, 'public');
   if (fs.existsSync(pub)) fs.cpSync(pub, outdir, { recursive: true });
+  // Static production pages: admin dashboard, privacy policy, terms, account deletion, App Links file.
+  const web = path.join(root, 'web', 'static');
+  if (fs.existsSync(web)) fs.cpSync(web, outdir, { recursive: true });
 }
 
 async function main() {

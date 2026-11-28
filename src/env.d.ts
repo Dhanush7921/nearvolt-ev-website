@@ -4,6 +4,7 @@ interface ImportMetaEnv {
   readonly DEV: boolean;
   readonly PROD: boolean;
   readonly VITE_LEADS_ENDPOINT?: string;
+  readonly VITE_API_BASE?: string;
   readonly VITE_PLAY_STORE_URL?: string;
   readonly VITE_APP_STORE_URL?: string;
   readonly VITE_CONTACT_EMAIL?: string;

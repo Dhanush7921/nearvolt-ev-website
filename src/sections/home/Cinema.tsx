@@ -68,10 +68,15 @@ export function Cinema() {
       .then(async (mod) => {
         if (disposed) return;
         if (!mod.webglAvailable() || new URLSearchParams(location.search).has('nowebgl')) return setMode('fallback');
-        const nav = navigator as Navigator & { deviceMemory?: number };
-        const low = matchMedia('(pointer: coarse)').matches || window.innerWidth < 820 || (nav.deviceMemory !== undefined && nav.deviceMemory <= 4);
+        const nav = navigator as Navigator & { deviceMemory?: number; connection?: { saveData?: boolean } };
+        // Very constrained devices (≤2 GB RAM) or Data Saver get the static illustration instead of WebGL.
+        if (nav.connection?.saveData || (nav.deviceMemory !== undefined && nav.deviceMemory <= 2)) return setMode('fallback');
+        const mobile = matchMedia('(pointer: coarse)').matches || window.innerWidth < 820;
+        const low = mobile || (nav.deviceMemory !== undefined && nav.deviceMemory <= 4) || (navigator.hardwareConcurrency !== undefined && navigator.hardwareConcurrency <= 2);
         try {
-          scene = new mod.ChargingScene({ canvas, quality: low ? 'low' : 'high', theme: currentTheme(), reducedMotion: prefersReducedMotion(), modelUrl, useModel: true });
+          scene = new mod.ChargingScene({ canvas, quality: low ? 'low' : 'high', theme: currentTheme(), reducedMotion: prefersReducedMotion(), modelUrl,
+            // Phones/tablets use the procedural car: saves the 4.6 MB model download on mobile data. Desktops keep the detailed model.
+            useModel: !mobile });
         } catch (err) {
           console.warn('[NEARVOLT EV] 3D unavailable, showing the illustration instead.', err);
           return setMode('fallback');
@@ -356,24 +361,23 @@ export function Cinema() {
       <div className="cine-track">
         <div className="cine-hero container">
           <div className="hero-copy">
-            <span className="kicker">Planned for Andhra Pradesh</span>
+            <span className="kicker">Emergency EV charging network</span>
             <h1 className="display hero-title" data-manual>
-              Charging, <span className="ink-gradient">found closer.</span>
+              Your next charge <span className="ink-gradient">is closer.</span>
             </h1>
             <svg className="hero-underline" viewBox="0 0 400 18" preserveAspectRatio="none" aria-hidden="true">
               <path className="hu-line" d="M2 12 C 110 3, 250 17, 398 7" pathLength={1} strokeDasharray="1 1" />
               <path className="hu-pulse" d="M2 12 C 110 3, 250 17, 398 7" pathLength={1} />
             </svg>
             <p className="lede hero-lede">
-              NEARVOLT EV is an app in development to help electric car and bike riders find charging that fits their vehicle, from public stations to participating private
-              hosts, with clear estimates before they go.
+              Discover nearby verified charging hosts and request compatible EV charging assistance when you need it most. Starting in Visakhapatnam.
             </p>
             <div className="hero-actions">
-              <ButtonLink to="/contact?form=driver" icon="arrow-right" size="lg">
-                Join early access
+              <ButtonLink to="/#find" icon="arrow-right" size="lg">
+                Find Charging
               </ButtonLink>
-              <ButtonLink to="/how-it-works" variant="glass" size="lg">
-                See how it works
+              <ButtonLink to="/hosts" variant="glass" size="lg" iconStart="house">
+                Become a Host
               </ButtonLink>
             </div>
             <p className="hero-status">
