@@ -202,4 +202,11 @@
     <string name="intro_3_b">Unknown compatibility never starts charging. Every session still needs host acceptance and your PIN.</string>
     <string name="intro_4_t">Handy tools</string>
     <string name="intro_4_b">Connector guide, trip assistant, safety checklist and emergency contacts — all in Tools.</string>
+    <!-- Request authorization gate -->
+    <string name="gate_host_spec">This host\'s charger power or phase isn\'t listed, so requests are disabled. Unknown electrical details can\'t authorize charging.</string>
+    <string name="gate_inlet">Your linked vehicle\'s charging inlet isn\'t publicly verified, so requests are disabled. Check your manual and choose your connector in My Garage.</string>
+    <string name="gate_socket_circuit">Wall-socket charging needs a host-confirmed dedicated circuit. That isn\'t confirmed for this host yet, so requests are disabled.</string>
+    <string name="gate_socket_over">This host\'s declared power is above what this socket is rated for, so requests are disabled.</string>
+    <string name="gate_socket_info">Wall socket: you\'ll need your vehicle\'s own portable charger. A socket is never treated as compatible automatically.</string>
+    <string name="gate_socket_confirm">My portable charger is rated for this socket, and I won\'t use an extension cord or adapter.</string>
 </resources>

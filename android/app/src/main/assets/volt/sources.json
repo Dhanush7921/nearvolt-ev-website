@@ -1,60 +1,60 @@
 {
   "components": {
-    "title": "DOE AFDC \u00b7 EV components",
+    "title": "DOE AFDC · EV components",
     "url": "https://afdc.energy.gov/vehicles/how-do-all-electric-cars-work",
     "scope": "General principles; not model specifications.",
     "checkedAt": "2026-11-28"
   },
   "batteries": {
-    "title": "DOE AFDC \u00b7 EV batteries",
+    "title": "DOE AFDC · EV batteries",
     "url": "https://afdc.energy.gov/vehicles/electric-batteries",
     "scope": "General battery technologies.",
     "checkedAt": "2026-11-28"
   },
   "chemistry": {
-    "title": "DOE \u00b7 Battery science",
+    "title": "DOE · Battery science",
     "url": "https://www.energy.gov/science/doe-explainsbatteries",
     "scope": "Battery fundamentals.",
     "checkedAt": "2026-11-28"
   },
   "bms": {
-    "title": "Texas Instruments \u00b7 Battery monitoring",
+    "title": "Texas Instruments · Battery monitoring",
     "url": "https://www.ti.com/solution/low-voltage-battery-system",
     "scope": "Monitoring principles; not a vehicle repair guide.",
     "checkedAt": "2026-11-28"
   },
   "charging": {
-    "title": "DOE AFDC \u00b7 Charging stations",
+    "title": "DOE AFDC · Charging stations",
     "url": "https://afdc.energy.gov/fuels/electricity-stations",
     "scope": "US connector examples; do not apply US electrical ratings to India.",
     "checkedAt": "2026-11-28"
   },
   "maintenance": {
-    "title": "DOE AFDC \u00b7 Maintenance and safety",
+    "title": "DOE AFDC · Maintenance and safety",
     "url": "https://afdc.energy.gov/vehicles/electric-maintenance",
     "scope": "General principles; manufacturer manual takes priority.",
     "checkedAt": "2026-11-28"
   },
   "fire": {
-    "title": "US Fire Administration \u00b7 EV charging safety",
+    "title": "US Fire Administration · EV charging safety",
     "url": "https://www.usfa.fema.gov/prevention/vehicle-fires/electric-vehicles/",
     "scope": "General safety guidance; local installation rules still apply.",
     "checkedAt": "2026-11-28"
   },
   "battery-safety": {
-    "title": "US Fire Administration \u00b7 Battery safety",
+    "title": "US Fire Administration · Battery safety",
     "url": "https://www.usfa.fema.gov/prevention/home-fires/prevent-fires/batteries/",
     "scope": "General lithium-ion safety.",
     "checkedAt": "2026-11-28"
   },
   "emergency": {
-    "title": "India Ministry of Home Affairs \u00b7 ERSS",
+    "title": "India Ministry of Home Affairs · ERSS",
     "url": "https://www.mha.gov.in/emergency-response-support-system-erss",
     "scope": "India emergency number.",
     "checkedAt": "2026-11-28"
   },
   "trip": {
-    "title": "DOE AFDC \u00b7 EV consumer guide",
+    "title": "DOE AFDC · EV consumer guide",
     "url": "https://afdc.energy.gov/vehicles/electric-consumers",
     "scope": "Planning principles only; US market claims not imported.",
     "checkedAt": "2026-11-28"
@@ -62,19 +62,19 @@
   "brief": {
     "title": "Owner-provided VOLT AI project brief",
     "url": null,
-    "scope": "Product intent, not a verified live service. See docs/PROJECT-BRIEF.txt.",
+    "scope": "Product intent and scope statements; not a verified live service.",
     "checkedAt": "2026-11-28"
   },
   "math": {
-    "title": "VOLT AI \u00b7 Dimensional calculations",
+    "title": "VOLT AI · Dimensional calculations",
     "url": null,
-    "scope": "Derived formulas supplied in the project brief. See src/engine/calculators.ts.",
+    "scope": "Derived formulas for energy, charging time and range.",
     "checkedAt": "2026-11-28"
   },
   "design": {
-    "title": "VOLT AI \u00b7 Standalone design policy",
+    "title": "VOLT AI · Standalone design policy",
     "url": null,
-    "scope": "Implementation policy for this demo, not a NEARVOLT production claim.",
+    "scope": "VOLT implementation policy.",
     "checkedAt": "2026-11-28"
   }
 }

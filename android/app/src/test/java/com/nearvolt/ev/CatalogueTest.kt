@@ -57,4 +57,55 @@ class CatalogueTest {
         assertTrue(ChargeTime.claims(v("IN-EV-026")).all { it.window.isNotBlank() })
         assertEquals("2 h 30 min", ChargeTime.hours(2.5)); assertEquals("45 min", ChargeTime.hours(0.75))
     }
+
+    // ---------- V1.3 request gate ----------
+    private fun gate(type: String? = "car", conn: String? = "TYPE2_AC", hc: List<String> = listOf("TYPE2_AC"), ht: List<String> = listOf("car"), kw: Double = 7.2,
+                     phase: String = "single", dedicated: Boolean? = null, amps: Double? = null, scr: CompatibilityEngine.Result? = null) =
+        RequestGate.evaluate(type, conn, hc, ht, kw, phase, dedicated, amps, scr)
+
+    @Test fun gateBasics() {
+        assertEquals(RequestGate.Allowed, gate())
+        assertEquals(RequestGate.Reason.PROFILE_UNKNOWN, (gate(conn = null) as RequestGate.Blocked).reason)
+        assertEquals(RequestGate.Reason.PROFILE_UNKNOWN, (gate(type = null) as RequestGate.Blocked).reason)
+        assertEquals(RequestGate.Reason.CONNECTOR_OR_TYPE_MISMATCH, (gate(hc = listOf("CCS2")) as RequestGate.Blocked).reason)
+        assertEquals(RequestGate.Reason.CONNECTOR_OR_TYPE_MISMATCH, (gate(ht = listOf("two_wheeler")) as RequestGate.Blocked).reason)
+    }
+    @Test fun gateUnknownHostElectricsBlock() {
+        assertEquals(RequestGate.Reason.HOST_SPEC_UNKNOWN, (gate(kw = 0.0) as RequestGate.Blocked).reason)
+        assertEquals(RequestGate.Reason.HOST_SPEC_UNKNOWN, (gate(phase = "") as RequestGate.Blocked).reason)
+        assertEquals(RequestGate.Reason.HOST_SPEC_UNKNOWN, (gate(kw = Double.NaN) as RequestGate.Blocked).reason)
+    }
+    @Test fun wallSocketNeverAutomaticallyCompatible() {
+        for (sock in listOf("DOMESTIC_15A", "INDUSTRIAL_16A")) {
+            // Current backend sends no dedicated-circuit info -> blocked.
+            assertEquals(RequestGate.Reason.SOCKET_CIRCUIT_UNCONFIRMED, (gate(conn = sock, hc = listOf(sock), kw = 3.0) as RequestGate.Blocked).reason)
+            assertEquals(RequestGate.Reason.SOCKET_CIRCUIT_UNCONFIRMED, (gate(conn = sock, hc = listOf(sock), kw = 3.0, dedicated = false) as RequestGate.Blocked).reason)
+            // Declared power above the socket rating -> blocked.
+            assertEquals(RequestGate.Reason.SOCKET_OVER_RATING, (gate(conn = sock, hc = listOf(sock), kw = 7.2, dedicated = true) as RequestGate.Blocked).reason)
+            assertEquals(RequestGate.Reason.SOCKET_OVER_RATING, (gate(conn = sock, hc = listOf(sock), kw = 3.0, dedicated = true, amps = 32.0) as RequestGate.Blocked).reason)
+            // Even with everything declared, never Allowed outright: explicit user confirmation required.
+            assertTrue(gate(conn = sock, hc = listOf(sock), kw = 3.0, dedicated = true, amps = 13.0) is RequestGate.NeedsConfirmation)
+        }
+        // Catalogue screening of a socket host is never a match.
+        assertNotEquals(Level.SCREENED_MATCH, CompatibilityEngine.screen(v("IN-EV-026"), listOf("DOMESTIC_15A"), 3.0).level)
+    }
+    @Test fun gateUsesScreening() {
+        val inc = CompatibilityEngine.screen(v("IN-EV-026"), listOf("CHADEMO"), 50.0)
+        assertEquals(RequestGate.Reason.VEHICLE_INCOMPATIBLE, (gate(conn = "CHADEMO", hc = listOf("CHADEMO"), kw = 50.0, scr = inc) as RequestGate.Blocked).reason)
+        val legacy = CompatibilityEngine.screen(v("IN-EV-001"), listOf("TYPE2_AC"), 7.2)   // REVA: inlet not verified
+        assertTrue(legacy.inletUnverified)
+        assertEquals(RequestGate.Reason.VEHICLE_INLET_UNVERIFIED, (gate(scr = legacy) as RequestGate.Blocked).reason)
+        // Verified Type 2 inlet with unpublished OBC limit: allowed (car limits its own AC draw); estimate shown as unverified.
+        val harrier = CompatibilityEngine.screen(v("IN-EV-031"), listOf("TYPE2_AC"), 7.2)
+        assertFalse(harrier.inletUnverified); assertEquals(RequestGate.Allowed, gate(scr = harrier))
+    }
+    // ---------- provenance: every record traces to the source database unchanged ----------
+    @Test fun provenancePreserved() {
+        cat.vehicles.forEach { x ->
+            assertTrue(x.id, x.id.matches(Regex("IN-EV-\\d{3}")))
+            assertNotNull(x.id, x.checkedAt); assertNotNull(x.id, x.sourceUrl); assertNotNull(x.id, x.status)
+        }
+        // Exact variants kept (e.g. two XUV400 EC packs differ only by on-board charger)
+        assertEquals("EC 34.5 kWh / 3.3kW supply", v("IN-EV-036").variant); assertEquals("EC 34.5 kWh / 7.2kW AC option", v("IN-EV-037").variant)
+    }
 }

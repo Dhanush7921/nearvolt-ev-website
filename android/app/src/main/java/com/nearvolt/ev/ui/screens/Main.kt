@@ -130,8 +130,8 @@ fun MainScreen(vm: AppViewModel) {
                     openSupport = { nav.navigate("support") })
             }
         }
-        // Floating VOLT orb on the main tabs only (never over request/PIN screens or forms).
-        if (uid != null && current != "listing" && tabs.any { it.route == current }) VoltOrb(bottomInset = 0.dp)
+        // Floating VOLT orb: Home, Map, Activity, Alerts only (not Account forms, host dashboard, requests/PIN). It avoids registered controls.
+        if (uid != null && current in setOf("home", "map", "activity", "alerts")) VoltOrb(bottomInset = 0.dp)
         }
         } }
     }

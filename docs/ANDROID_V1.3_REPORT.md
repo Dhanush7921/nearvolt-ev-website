@@ -8,6 +8,28 @@
 | Backend / website | **Not changed and not deployed.** Not merged into `main` or `production/v1`. |
 | Additional cost | **₹0** (no paid API, AI, SMS, maps, fonts or assets) |
 
+## 0. Finalization (pre-push review)
+- **Publication scan.** The 25 changed files were checked for keys, tokens, passwords, signing material, emails, phone numbers, personal paths and private documents. Nothing private was found.
+  - The local Windows path in this report was replaced with `$env:USERPROFILE`.
+  - Raw research PDFs, CSVs, the VOLT source archive and APKs are **not** in the repo.
+- **VOLT knowledge corrected for the shipping app.** 8 answers said "this demo" or "standalone"; one said "no analytics or tracking SDKs", which is **false** because the app uses Firebase Crashlytics. They were reworded accurately, with no new claims, and dangling private file paths were removed from the source notes. The benchmark is unchanged.
+- **Request authorization gate** (`RequestGate`, used by the request screen and re-checked in `create()`):
+  - **Blocked:** unknown vehicle type or connector; connector or type mismatch; host power or phase missing; catalogue-incompatible vehicle; catalogue vehicle with an unverified inlet.
+  - **15 A / 16 A wall sockets are never authorized automatically.**
+    - They require a host-confirmed dedicated circuit.
+    - Declared power must be within the socket rating (3.45 kW / 3.68 kW at 230 V, and the current within 15 A / 16 A when known).
+    - The user must also tick a confirmation that their portable charger is rated for that socket and that they won't use extension cords or adapters.
+  - The current backend does **not** send `dedicatedCircuit` in nearby results, so **socket requests are blocked in V1.3** until the backend exposes it (see blockers).
+  - Judgement call, stated openly: a verified Type 2 inlet whose OBC limit is unpublished is **allowed**. The Type 2 pilot signal makes the car draw within its own limit, so the unknown affects duration, not safety; the estimate is labelled unverified.
+- **Catalogue provenance.** `vehicles.json` rebuilds **byte-identical** from the source database. A field-by-field check (11 fields × 62 records) found 0 mismatches, and all 185 unknown values are preserved as null. Exact variants are kept (for example, XUV400 EC 3.3 kW vs 7.2 kW).
+- **Photos.** No model-specific photo with established commercial-use rights was available, so the labelled original illustrations remain.
+- **Orb obstruction.**
+  - The orb shows only on Home, Map, Activity and Alerts; never on Account forms, the host dashboard, request/PIN screens or sub-screens. It lives inside the content area, so it never covers the navigation bar.
+  - It avoids registered controls: the Home emergency button, the Map top controls, filters, recenter button and bottom panel, and MapLibre's compass and attribution. When its spot is blocked it moves to the next free edge slot, or hides (and can't be clicked) while none is free.
+  - It hides while the keyboard is open. Home has extra bottom padding so the last items can scroll clear of it.
+- **Map startup.** Fixed my V1.3 regression where Map briefly showed the list before the low-data preference loaded (a list→map flash). Nothing renders until the preference is known, and no tiles are fetched in low-data mode.
+- **V1.2.1 behaviour rechecked** in code: the search cancels the previous job, clears stale results and caches only for the current location; the selection is cleared when results change; draft filters apply once. No new defects were found. **Device timing is still unmeasured.**
+
 ## 1. What's new
 ### VOLT AI (knowledge-based, offline)
 - **Engine:** a faithful Kotlin port of the owner's VOLT AI V1 engine and calculators (`volt/VoltEngine.kt`). It uses the same 114 knowledge records, 113 of them eligible; 1 `needs-review` record is excluded, as in the original. Knowledge loads from `assets/volt`.
@@ -88,7 +110,7 @@
 ## 3. Test results (run in this environment)
 | Check | Result |
 |---|---|
-| JVM unit tests | **39/39 pass**: Core 7, Compatibility 5, V1.2 6, **Catalogue 9**, **VOLT 12** |
+| JVM unit tests | **44/44 pass**: Core 7, Compatibility 5, V1.2 6, **Catalogue + RequestGate 14**, **VOLT 12** |
 | VOLT benchmark (same 115 cases as the standalone app) | **Intent 114/115 · Retrieval 102/102 · Safety 15/15**. Identical to the published TypeScript result. The one miss (b096, "exact battery capacity of my unspecified car" → vehicle) is the same as in the original. |
 | VOLT ported engine tests | Formulas, 12 invalid-input cases, typo tolerance, multi-turn calculation (24.00 kWh → 3.70 h → 7.41 h), profile range (120.0 km), follow-up, unknown/injection, emergency priority, unsafe-bypass refusal, input bounds |
 | VOLT latency (JVM, laptop-class CPU) | median ≈ 0.5–0.7 ms, p95 ≈ 2–8 ms per answer. **Not a phone measurement.** |
@@ -131,6 +153,9 @@ Added assets: catalogue 97 KB, VOLT knowledge 48 KB, sources 3 KB. Both are pars
 - **Repository:** nothing private was committed — no keystore, `google-services.json` or secrets.
 
 ## 7. Known limitations and pending work
+0. **Backend follow-up (not done; requires your approval to change and deploy):**
+   - Add `dedicatedCircuit` (from `selfDeclaration`) and `currentA` to the nearby-hosts response; until then, socket requests stay blocked in this app.
+   - Enforce the same gate on the server: today the server checks connector and type only, and V1.2 clients (still supported) don't apply the new gate.
 1. **Device acceptance (section 9):**
    - Startup and map timing on a real phone.
    - 320 dp and 200% font layout checks.
@@ -148,21 +173,24 @@ Added assets: catalogue 97 KB, VOLT knowledge 48 KB, sources 3 KB. Both are pars
 ## 8. Signed build and verification (owner's Windows laptop, one block)
 Signing uses your existing `android\keystore.properties`, or `NV_KEYSTORE_*` environment variables set in your own PowerShell session. Never paste passwords into chat. Outputs go to a new `release-1.3.0` folder, so V1.2 files are not overwritten.
 ```powershell
-cd C:\Users\Asus\NEARVOLT-EV
-git fetch origin; git checkout upgrade/v1.3-ev-intelligence; git pull
+cd "$env:USERPROFILE\NEARVOLT-EV"
+git fetch origin; git checkout upgrade/v1.3-ev-intelligence; git pull --ff-only
 cd android
-if (-not (Test-Path app\src\prod\google-services.json)) { throw "google-services.json missing" }
-.\gradlew.bat clean testDevDebugUnitTest lintDevDebug assembleProdRelease -PNV_PROD_API_BASE_URL=https://nearvolt-api-0rxa.onrender.com/
-# Optional JVM UI tests (downloads Robolectric once):
-.\gradlew.bat testDevDebugUnitTest -PNV_UI_TESTS=true
-$bt  = (Get-ChildItem "$env:LOCALAPPDATA\Android\Sdk\build-tools" | Sort-Object Name | Select-Object -Last 1).FullName
-$out = New-Item -ItemType Directory -Force -Path ..\release-1.3.0
-Get-ChildItem app\build\outputs\apk\prod\release\*.apk | ForEach-Object {
-  Copy-Item $_.FullName $out
-  "== $($_.Name)"
-  & "$bt\apksigner.bat" verify --print-certs $_.FullName | Select-String "Signer #1 certificate SHA-256"
-  & "$bt\aapt2.exe" dump badging $_.FullName | Select-String "package:|native-code"
-  (Get-FileHash $_.FullName -Algorithm SHA256).Hash
+if (-not (Test-Path app\src\prod\google-services.json)) { throw "app\src\prod\google-services.json missing" }
+if (-not (Test-Path keystore.properties) -and -not $env:NV_KEYSTORE_FILE) { throw "Release key not configured (android\keystore.properties or NV_KEYSTORE_* variables)" }
+.\gradlew.bat clean testDevDebugUnitTest lintDevDebug assembleProdRelease "-PNV_PROD_API_BASE_URL=https://nearvolt-api-0rxa.onrender.com/"
+if ($LASTEXITCODE -ne 0) { throw "Build or tests failed" }
+$bt   = (Get-ChildItem "$env:LOCALAPPDATA\Android\Sdk\build-tools" | Sort-Object Name | Select-Object -Last 1).FullName
+$out  = New-Item -ItemType Directory -Force -Path ..\release-1.3.0
+$apks = @(Get-ChildItem app\build\outputs\apk\prod\release\*-release.apk)
+if ($apks.Count -ne 4) { throw "Expected 4 signed APKs, found $($apks.Count). Unsigned output means the release key was not picked up." }
+foreach ($a in $apks) {
+  $dest = Join-Path $out ("NEARVOLT-EV-1.3.0-" + ($a.BaseName -replace '^app-prod-|-release$','') + ".apk")
+  Copy-Item $a.FullName $dest -Force
+  "== $(Split-Path $dest -Leaf)"
+  & "$bt\apksigner.bat" verify --print-certs $dest | Select-String "Signer #1 certificate SHA-256"
+  & "$bt\aapt2.exe" dump badging $dest | Select-String "package:|native-code"
+  "SHA-256: " + (Get-FileHash $dest -Algorithm SHA256).Hash
 }
 ```
 **Pass when:**

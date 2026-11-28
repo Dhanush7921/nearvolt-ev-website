@@ -77,7 +77,9 @@ object CatalogueSearch {
  */
 object CompatibilityEngine {
     enum class Level { SCREENED_MATCH, UNVERIFIED, INCOMPATIBLE }
-    data class Result(val level: Level, val sharedConnectors: List<String>, val effectiveAcKw: Double?, val reasons: List<String>) {
+    data class Result(val level: Level, val sharedConnectors: List<String>, val effectiveAcKw: Double?, val reasons: List<String>,
+                      /** True when the vehicle's inlet itself is not publicly verified (not the wall-socket case). Blocks requests via RequestGate. */
+                      val inletUnverified: Boolean = false) {
         /** Only an INCOMPATIBLE result blocks; anything else still needs explicit user confirmation + host acceptance + server checks. */
         val blocksRequest get() = level == Level.INCOMPATIBLE
     }
@@ -98,7 +100,7 @@ object CompatibilityEngine {
                 listOf("This host offers a ${hostConnectors.filter { it in SOCKETS }.joinToString { if (it == "DOMESTIC_15A") "15 A home socket" else "16 A industrial socket" }}. It needs your vehicle's own portable charger rated for that socket and a properly earthed circuit — not verified here."))
             return if (acKnown && dcKnown && v.verifiedConnectors.isNotEmpty())
                 Result(Level.INCOMPATIBLE, emptyList(), null, listOf("Charger connectors (${hostConnectors.joinToString()}) do not match this vehicle's verified inlets (${v.verifiedConnectors.joinToString()})."))
-            else Result(Level.UNVERIFIED, emptyList(), null, listOf("This configuration's inlet is not publicly verified (${listOfNotNull(v.acConnectorLabel, v.dcConnectorLabel).joinToString(" / ").ifBlank { "unknown" }}). Check the vehicle manual or VIN."))
+            else Result(Level.UNVERIFIED, emptyList(), null, listOf("This configuration's inlet is not publicly verified (${listOfNotNull(v.acConnectorLabel, v.dcConnectorLabel).joinToString(" / ").ifBlank { "unknown" }}). Check the vehicle manual or VIN."), inletUnverified = true)
         }
         var effective: Double? = null
         val acShared = shared.any { it in AC }
@@ -147,4 +149,37 @@ object ChargeTime {
     }
     fun hours(h: Double): String { val m = Math.round(h * 60); return if (m < 60) "$m min" else if (m % 60 == 0L) "${m / 60} h" else "${m / 60} h ${m % 60} min" }
     private fun fmt(d: Double) = if (d % 1.0 == 0.0) d.toInt().toString() else "%.1f".format(java.util.Locale.US, d)
+}
+
+/**
+ * Single client-side authorization gate for creating a charging request (V1.3).
+ * Unknown or insufficient electrical information BLOCKS. A home wall socket is never authorized automatically: it needs a host-confirmed
+ * dedicated circuit, a declared power within the socket rating, and the user's explicit confirmation of their own portable charger.
+ * The server independently re-checks connector/vehicle type (INCOMPATIBLE) and keeps host acceptance + session PIN.
+ */
+object RequestGate {
+    enum class Reason { PROFILE_UNKNOWN, CONNECTOR_OR_TYPE_MISMATCH, HOST_SPEC_UNKNOWN, VEHICLE_INCOMPATIBLE, VEHICLE_INLET_UNVERIFIED,
+        SOCKET_CIRCUIT_UNCONFIRMED, SOCKET_OVER_RATING, SOCKET_NEEDS_CONFIRMATION }
+    sealed interface Decision { val reason: Reason? }
+    data object Allowed : Decision { override val reason: Reason? = null }
+    data class NeedsConfirmation(override val reason: Reason) : Decision
+    data class Blocked(override val reason: Reason) : Decision
+
+    /** Socket code → (rated amps, single-phase kW at 230 V). */
+    val SOCKET_RATING = mapOf("DOMESTIC_15A" to (15.0 to 3.45), "INDUSTRIAL_16A" to (16.0 to 3.68))
+
+    fun evaluate(vehicleType: String?, connector: String?, hostConnectors: List<String>, hostVehicleTypes: List<String>, hostPowerKw: Double, hostPhase: String,
+                 dedicatedCircuit: Boolean?, currentA: Double?, screening: CompatibilityEngine.Result?): Decision {
+        if (vehicleType == null || connector == null) return Blocked(Reason.PROFILE_UNKNOWN)
+        if (connector !in hostConnectors || vehicleType !in hostVehicleTypes) return Blocked(Reason.CONNECTOR_OR_TYPE_MISMATCH)
+        if (!(hostPowerKw > 0) || hostPhase !in setOf("single", "three")) return Blocked(Reason.HOST_SPEC_UNKNOWN)
+        if (screening?.level == CompatibilityEngine.Level.INCOMPATIBLE) return Blocked(Reason.VEHICLE_INCOMPATIBLE)
+        if (screening?.inletUnverified == true) return Blocked(Reason.VEHICLE_INLET_UNVERIFIED)
+        SOCKET_RATING[connector]?.let { (amps, kw) ->
+            if (dedicatedCircuit != true) return Blocked(Reason.SOCKET_CIRCUIT_UNCONFIRMED)
+            if (hostPowerKw > kw || (currentA != null && currentA > amps)) return Blocked(Reason.SOCKET_OVER_RATING)
+            return NeedsConfirmation(Reason.SOCKET_NEEDS_CONFIRMATION)
+        }
+        return Allowed
+    }
 }

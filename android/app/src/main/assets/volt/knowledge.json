@@ -1456,7 +1456,7 @@
       "nearvolt",
       "works"
     ],
-    "answer": "NEARVOLT EV is an emergency-purpose platform connecting drivers with verified charging hosts. This demo has no live operational connection.",
+    "answer": "NEARVOLT EV is an emergency-purpose platform connecting drivers with verified charging hosts. VOLT answers from local knowledge and has no live operational connection.",
     "source": "brief",
     "safety": "general",
     "reviewStatus": "owner-provided",
@@ -1545,7 +1545,7 @@
       "near",
       "me"
     ],
-    "answer": "Live discovery requires NEARVOLT integration. This demo cannot locate hosts, confirm availability or reveal host addresses.",
+    "answer": "Live discovery happens on the NEARVOLT map, using results from the server. VOLT itself cannot locate hosts, confirm availability or reveal host addresses.",
     "source": "brief",
     "safety": "general",
     "reviewStatus": "owner-provided",
@@ -1563,7 +1563,7 @@
       "connector",
       "compatibility"
     ],
-    "answer": "Confirm your exact vehicle, connector, charger and manufacturer approval. This demo cannot certify equipment compatibility.",
+    "answer": "Confirm your exact vehicle, connector, charger and manufacturer approval. VOLT cannot certify equipment compatibility.",
     "source": "brief",
     "safety": "general",
     "reviewStatus": "owner-provided",
@@ -1581,7 +1581,7 @@
       "as",
       "host"
     ],
-    "answer": "Future host registration requires verification. This standalone assistant cannot register or approve hosts.",
+    "answer": "Host registration requires verification. VOLT cannot register or approve hosts.",
     "source": "brief",
     "safety": "general",
     "reviewStatus": "owner-provided",
@@ -1598,7 +1598,7 @@
       "request",
       "charging"
     ],
-    "answer": "Future requests depend on compatibility, availability and host acceptance. This demo cannot create bookings.",
+    "answer": "Requests depend on compatibility, availability and host acceptance. VOLT cannot create bookings.",
     "source": "brief",
     "safety": "general",
     "reviewStatus": "owner-provided",
@@ -1633,7 +1633,7 @@
       "location",
       "privacy"
     ],
-    "answer": "The standalone app does not request GPS or hold host addresses.",
+    "answer": "VOLT does not request GPS or hold host addresses. The app uses your location only for searches you start, and shows hosts as approximate areas until a host accepts.",
     "source": "design",
     "safety": "general",
     "reviewStatus": "owner-provided",
@@ -1700,7 +1700,7 @@
       "analytics",
       "tracking"
     ],
-    "answer": "This demo contains no analytics, advertising or tracking SDKs.",
+    "answer": "VOLT conversations stay on this device and are not sent to NEARVOLT or any AI service. The app uses Firebase Crashlytics for crash reports and contains no advertising SDKs.",
     "source": "design",
     "safety": "general",
     "reviewStatus": "owner-provided",
@@ -1786,7 +1786,7 @@
       "battery",
       "capacity"
     ],
-    "answer": "This demo has no verified model specification database. Enter capacity from your vehicle documentation.",
+    "answer": "VOLT has no verified per-model database. The EV catalogue lists published figures with their sources; otherwise use the capacity from your vehicle documentation.",
     "source": "design",
     "safety": "general",
     "reviewStatus": "owner-provided",

@@ -35,6 +35,8 @@ import kotlinx.serialization.Serializable
     val vehicleTypes: List<String> = emptyList(), val powerKw: Double = 0.0, val chargerType: String = "", val phase: String = "",
     val bookableNow: Boolean = false, val openNow: Boolean = false, val rating: Rating? = null, val availabilityUpdatedAt: String? = null,
     val approxArea: ApproxArea? = null,
+    // V1.3 client readiness: optional; the current backend does NOT send these yet, so socket requests stay blocked (RequestGate).
+    val dedicatedCircuit: Boolean? = null, val currentA: Double? = null,
 )
 /** ~1 km grid cell containing the host. Exact coordinates are only shared after a host accepts. */
 @Serializable data class ApproxArea(val lat: Double, val lng: Double, val radiusM: Int = 800)

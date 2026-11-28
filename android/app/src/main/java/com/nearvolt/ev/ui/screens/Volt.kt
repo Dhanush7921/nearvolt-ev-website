@@ -40,6 +40,11 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.composed
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -152,34 +157,66 @@ private val SUGGESTIONS = listOf("How long to charge 30 kWh from 20% to 80% at 3
     "How does the session PIN work?", "What is the difference between kW and kWh?", "Tips to extend battery life", "Is it safe to charge in rain?", "What does SOC mean?")
 
 // ============================== FLOATING ORB ==============================
-/** Draggable VOLT orb. Tap opens VOLT full screen. Snaps to the nearest side edge; position is session-only. */
+/**
+ * Screens register critical controls (emergency button, map controls, bottom panels) with [voltAvoid]. The orb never overlaps a registered
+ * area: it moves to the first free edge slot, or hides while none is free. It also hides while the keyboard is open (forms).
+ */
+object VoltAvoid {
+    val rects = androidx.compose.runtime.mutableStateMapOf<String, androidx.compose.ui.geometry.Rect>()
+}
+fun Modifier.voltAvoid(key: String): Modifier = composed {
+    DisposableEffect(key) { onDispose { VoltAvoid.rects.remove(key) } }
+    onGloballyPositioned { c ->
+        val r = c.boundsInWindow()
+        if (VoltAvoid.rects[key] != r) VoltAvoid.rects[key] = r
+    }
+}
+
+/** Draggable VOLT orb. Tap opens VOLT full screen. Snaps to a side edge; position is session-only. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun BoxScope.VoltOrb(bottomInset: androidx.compose.ui.unit.Dp) {
     val density = LocalDensity.current
     var parent by remember { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
+    var parentOrigin by remember { mutableStateOf(Offset.Zero) }
     val sizePx = with(density) { 60.dp.toPx() }; val margin = with(density) { 16.dp.toPx() }; val bottomPx = with(density) { bottomInset.toPx() }
+    val gap = with(density) { 8.dp.toPx() }
     var pos by rememberSaveable(stateSaver = androidx.compose.runtime.saveable.listSaver(save = { listOf(it.x, it.y) }, restore = { Offset(it[0], it[1]) })) { mutableStateOf(Offset(-1f, -1f)) }
     val reduced = rememberReducedMotion()
-    Box(Modifier.matchParentSize().onSizeChanged { parent = it })
+    val imeVisible = WindowInsets.isImeVisible
+    Box(Modifier.matchParentSize().onSizeChanged { parent = it }.onGloballyPositioned { parentOrigin = it.positionInWindow() })
     if (parent.width == 0) return
     val maxX = parent.width - sizePx - margin; val maxY = parent.height - sizePx - margin - bottomPx
-    val target = if (pos.x < 0) Offset(maxX, maxY - with(density) { 8.dp.toPx() }) else Offset(pos.x.coerceIn(margin, maxX), pos.y.coerceIn(margin, maxY))
+    val preferred = if (pos.x < 0) Offset(maxX, maxY - gap) else Offset(pos.x.coerceIn(margin, maxX), pos.y.coerceIn(margin, maxY))
     var dragging by remember { mutableStateOf(false) }
-    val ax by animateFloatAsState(target.x, if (dragging || reduced) snap() else spring(dampingRatio = 0.7f, stiffness = 500f), label = "orbX")
-    val ay by animateFloatAsState(target.y, if (dragging || reduced) snap() else spring(dampingRatio = 0.7f, stiffness = 500f), label = "orbY")
+    // Avoidance: candidate slots in local coordinates, checked against registered window rects.
+    val blocked = VoltAvoid.rects.values.toList()
+    fun free(p: Offset): Boolean { val r = androidx.compose.ui.geometry.Rect(parentOrigin + p, androidx.compose.ui.geometry.Size(sizePx, sizePx)).inflate(gap)
+        return blocked.none { it.overlaps(r) } }
+    val slots = listOf(preferred, Offset(maxX, maxY - gap), Offset(margin, maxY - gap), Offset(maxX, parent.height * 0.42f), Offset(margin, parent.height * 0.42f),
+        Offset(maxX, margin + parent.height * 0.18f), Offset(margin, margin + parent.height * 0.18f))
+    val target = if (dragging) preferred else slots.firstOrNull { it.y in margin..maxY && free(it) }
+    val visible = target != null && !imeVisible
+    val shown = target ?: preferred
+    val ax by animateFloatAsState(shown.x, if (dragging || reduced) snap() else spring(dampingRatio = 0.75f, stiffness = 400f), label = "orbX")
+    val ay by animateFloatAsState(shown.y, if (dragging || reduced) snap() else spring(dampingRatio = 0.75f, stiffness = 400f), label = "orbY")
+    val alpha by animateFloatAsState(if (visible) 1f else 0f, if (reduced) snap() else tween(160), label = "orbA")
+    if (alpha == 0f && !visible) return   // fully hidden: not composed, not focusable, not clickable
     val label = stringResource(R.string.volt_open)
-    Box(Modifier.offset { IntOffset(ax.roundToInt(), ay.roundToInt()) }.size(60.dp).shadow(14.dp, CircleShape, ambientColor = Brand.EmeraldBrand, spotColor = Brand.EmeraldBrand)
+    Box(Modifier.offset { IntOffset(ax.roundToInt(), ay.roundToInt()) }.size(60.dp).graphicsLayerAlpha(alpha)
+        .shadow(14.dp, CircleShape, ambientColor = Brand.EmeraldBrand, spotColor = Brand.EmeraldBrand)
         .clip(CircleShape).background(Brush.radialGradient(listOf(Brand.NeonMint, Brand.EmeraldBrand, Color(0xFF071B17))))
         .semantics { contentDescription = label; role = Role.Button }
         .pointerInput(maxX, maxY) {
-            detectDragGestures(onDragStart = { dragging = true; if (pos.x < 0) pos = target },
+            detectDragGestures(onDragStart = { dragging = true; if (pos.x < 0) pos = preferred },
                 onDragEnd = { dragging = false; pos = Offset(if (pos.x + sizePx / 2 < parent.width / 2) margin else maxX, pos.y.coerceIn(margin, maxY)) },
                 onDragCancel = { dragging = false }) { ch, d -> ch.consume(); pos = Offset((pos.x + d.x).coerceIn(0f, parent.width - sizePx), (pos.y + d.y).coerceIn(0f, maxY)) }
         }
-        .clickable(onClickLabel = label) { VoltController.ask() }, contentAlignment = Alignment.Center) {
+        .clickable(enabled = visible, onClickLabel = label) { VoltController.ask() }, contentAlignment = Alignment.Center) {
         VoltMark(Modifier.size(34.dp), animate = !reduced && LocalGraphics.current.decorativeMotion)
     }
 }
+private fun Modifier.graphicsLayerAlpha(a: Float) = this.graphicsLayer { alpha = a }
 
 /** VOLT's animated mark: a breathing ring with an orbiting spark and a bolt. Static when motion is reduced. */
 @Composable

@@ -119,11 +119,16 @@ class FindViewModel : ViewModel() {
         searchJob = job
         return job
     }
-    fun create(host: HostSummary, note: String?, battery: Int?, onCreated: (String) -> Unit) = viewModelScope.launch {
+    fun create(host: HostSummary, note: String?, battery: Int?, socketConfirmed: Boolean = false, onCreated: (String) -> Unit) = viewModelScope.launch {
         val s = state.value
         val fix = s.fix ?: return@launch
         val type = s.requestType; val conn = s.requestConnector
-        if (type == null || conn == null || conn !in host.connectors || type !in host.vehicleTypes) { state.update { it.copy(createError = "Your vehicle's connector or type doesn't match this host.") }; return@launch }
+        when (val g = com.nearvolt.ev.catalogue.RequestGate.evaluate(type, conn, host.connectors, host.vehicleTypes, host.powerKw, host.phase, host.dedicatedCircuit, host.currentA, null)) {
+            is com.nearvolt.ev.catalogue.RequestGate.Blocked -> { state.update { it.copy(createError = "This request can't be authorized (${g.reason.name.lowercase().replace('_', ' ')}).") }; return@launch }
+            is com.nearvolt.ev.catalogue.RequestGate.NeedsConfirmation -> if (!socketConfirmed) { state.update { it.copy(createError = "Confirm your portable charger is rated for this socket.") }; return@launch }
+            else -> {}
+        }
+        if (type == null || conn == null) return@launch
         val key = createKey ?: UUID.randomUUID().toString().also { createKey = it }
         state.update { it.copy(creating = true, createError = null) }
         val body = CreateRequestBody(host.hostId, type, conn, fix.point, true, note?.ifBlank { null }, battery)
@@ -230,7 +235,7 @@ fun FindScreen(app: AppViewModel, exclude: String?, openRequest: (String) -> Uni
     selected?.let { h ->
         ModalBottomSheet(onDismissRequest = { selected = null; vm.clearCreateError() }) {
             val batteryOk = appState.config?.capabilities?.batteryPercent == true
-            HostDetail(h, s, batteryOk, onRequest = { note, battery -> vm.create(h, note, if (batteryOk) battery else null) { id -> selected = null; openRequest(id) } })
+            HostDetail(h, s, batteryOk, onRequest = { note, battery, sc -> vm.create(h, note, if (batteryOk) battery else null, sc) { id -> selected = null; openRequest(id) } })
         }
     }
 }
@@ -262,15 +267,13 @@ internal fun HostCard(h: HostSummary, onClick: () -> Unit) {
 }
 
 @Composable
-internal fun HostDetail(h: HostSummary, s: FindState, batterySupported: Boolean, favourite: Boolean = false, onFavourite: (() -> Unit)? = null, onRequest: (String?, Int?) -> Unit) {
+internal fun HostDetail(h: HostSummary, s: FindState, batterySupported: Boolean, favourite: Boolean = false, onFavourite: (() -> Unit)? = null, onRequest: (String?, Int?, Boolean) -> Unit) {
     var confirmed by remember { mutableStateOf(false) }
     var battery by remember { mutableFloatStateOf(20f) }
     var batteryConfirmed by remember { mutableStateOf(false) }
     var note by remember { mutableStateOf("") }
     // V1.3: an unknown vehicle connector/type is never treated as compatible (previously it fell back to the host's first connector).
     val connector = s.requestConnector.orEmpty()
-    val profileKnown = s.requestConnector != null && s.requestType != null
-    val compatible = profileKnown && h.connectors.contains(s.requestConnector) && h.vehicleTypes.contains(s.requestType)
     // Catalogue screening of the primary vehicle (if the user linked it to a catalogue configuration). INCOMPATIBLE blocks; anything else is advisory.
     val c = com.nearvolt.ev.NearVoltApp.instance.container
     val uid = c.auth.currentUser?.uid
@@ -280,6 +283,8 @@ internal fun HostDetail(h: HostSummary, s: FindState, batterySupported: Boolean,
     var catalogue by remember { mutableStateOf(com.nearvolt.ev.catalogue.CatalogueRepo.peek()) }
     LaunchedEffect(catId) { if (catId != null && catalogue == null) catalogue = runCatching { com.nearvolt.ev.catalogue.CatalogueRepo.load(com.nearvolt.ev.NearVoltApp.instance) }.getOrNull() }
     val screening = catalogue?.vehicles?.firstOrNull { it.id == catId }?.let { com.nearvolt.ev.catalogue.CompatibilityEngine.screen(it, h.connectors, h.powerKw, h.chargerType) to it }
+    val gate = com.nearvolt.ev.catalogue.RequestGate.evaluate(s.requestType, s.requestConnector, h.connectors, h.vehicleTypes, h.powerKw, h.phase, h.dedicatedCircuit, h.currentA, screening?.first)
+    var socketConfirmed by remember(h.hostId) { mutableStateOf(false) }
     Column(Modifier.padding(horizontal = 24.dp).padding(bottom = 32.dp).navigationBarsPadding(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             LeadingBadge(Icons.Outlined.EvStation, if (h.bookableNow) Tone.Good else Tone.Neutral, 48.dp); Spacer(Modifier.width(12.dp))
@@ -309,10 +314,12 @@ internal fun HostDetail(h: HostSummary, s: FindState, batterySupported: Boolean,
             }
         }
         if (!h.bookableNow) InlineMessage(stringResource(R.string.detail_not_bookable))
-        else if (!profileKnown) InlineMessage(stringResource(R.string.detail_profile_needed))
-        else if (!compatible) InlineMessage(stringResource(R.string.detail_incompatible))
-        else if (screening?.first?.blocksRequest == true) InlineMessage(stringResource(R.string.screen_blocks))
+        else if (gate is com.nearvolt.ev.catalogue.RequestGate.Blocked) InlineMessage(stringResource(gateText(gate.reason)))
         else {
+            if (gate is com.nearvolt.ev.catalogue.RequestGate.NeedsConfirmation) {
+                InlineMessage(stringResource(R.string.gate_socket_info), isError = false)
+                CheckRow(socketConfirmed, { socketConfirmed = it }, stringResource(R.string.gate_socket_confirm))
+            }
             OutlinedTextField(note, { note = it.take(300) }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.field_note_optional)) }, maxLines = 3)
             if (batterySupported) {
                 Text(stringResource(R.string.battery_question, battery.toInt()), style = MaterialTheme.typography.titleSmall)
@@ -322,7 +329,7 @@ internal fun HostDetail(h: HostSummary, s: FindState, batterySupported: Boolean,
             }
             CheckRow(confirmed, { confirmed = it }, stringResource(R.string.detail_confirm_compat, Labels.connector(connector), Labels.kw(h.powerKw)))
             InlineMessage(s.createError)
-            PrimaryButton(stringResource(R.string.detail_request), { onRequest(note, battery.toInt()) }, enabled = confirmed && (batteryConfirmed || !batterySupported), loading = s.creating)
+            PrimaryButton(stringResource(R.string.detail_request), { onRequest(note, battery.toInt(), socketConfirmed) }, enabled = confirmed && (batteryConfirmed || !batterySupported) && (gate !is com.nearvolt.ev.catalogue.RequestGate.NeedsConfirmation || socketConfirmed), loading = s.creating)
         }
     }
 }
@@ -343,4 +350,15 @@ internal fun ManualLocationDialog(onDismiss: () -> Unit, onSubmit: (String) -> U
             OutlinedTextField(text, { text = it.take(200) }, label = { Text(stringResource(R.string.manual_field)) }, singleLine = false, maxLines = 3) } },
         confirmButton = { TextButton(onClick = { onSubmit(text.trim()) }, enabled = text.trim().length >= 3) { Text(stringResource(R.string.action_search)) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } })
+}
+
+internal fun gateText(r: com.nearvolt.ev.catalogue.RequestGate.Reason?) = when (r) {
+    com.nearvolt.ev.catalogue.RequestGate.Reason.PROFILE_UNKNOWN -> R.string.detail_profile_needed
+    com.nearvolt.ev.catalogue.RequestGate.Reason.CONNECTOR_OR_TYPE_MISMATCH -> R.string.detail_incompatible
+    com.nearvolt.ev.catalogue.RequestGate.Reason.HOST_SPEC_UNKNOWN -> R.string.gate_host_spec
+    com.nearvolt.ev.catalogue.RequestGate.Reason.VEHICLE_INCOMPATIBLE -> R.string.screen_blocks
+    com.nearvolt.ev.catalogue.RequestGate.Reason.VEHICLE_INLET_UNVERIFIED -> R.string.gate_inlet
+    com.nearvolt.ev.catalogue.RequestGate.Reason.SOCKET_CIRCUIT_UNCONFIRMED -> R.string.gate_socket_circuit
+    com.nearvolt.ev.catalogue.RequestGate.Reason.SOCKET_OVER_RATING -> R.string.gate_socket_over
+    else -> R.string.gate_socket_info
 }

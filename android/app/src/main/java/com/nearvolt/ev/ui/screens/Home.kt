@@ -88,7 +88,7 @@ fun HomeScreen(app: AppViewModel, openMap: () -> Unit, openFind: () -> Unit, ope
     val first = me.name.trim().split(' ').firstOrNull().orEmpty()
     val primaryLocal = local.garage.firstOrNull { it.id == PRIMARY_LOCAL_ID }
 
-    LazyColumn(Modifier.fillMaxSize().ambient(), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    LazyColumn(Modifier.fillMaxSize().ambient(), contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 96.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         item(key = "top") {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Image(painterResource(R.drawable.ic_brand_mark), null, Modifier.size(30.dp))
@@ -163,7 +163,7 @@ fun HomeScreen(app: AppViewModel, openMap: () -> Unit, openFind: () -> Unit, ope
             }
         }
         item(key = "vehicle") { VehicleCard(me.vehicle, primaryLocal, openGarage) }
-        item(key = "sos") { EmergencyButton(stringResource(R.string.home_emergency), enabled = true, loading = false, onClick = openEmergency) }
+        item(key = "sos") { Box(Modifier.voltAvoid("home-sos")) { EmergencyButton(stringResource(R.string.home_emergency), enabled = true, loading = false, onClick = openEmergency) } }
         item(key = "shortcuts") {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Shortcut(Icons.Outlined.Map, stringResource(R.string.home_find_on_map), Modifier.weight(1f), openMap)

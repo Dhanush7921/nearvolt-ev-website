@@ -1,5 +1,7 @@
 package com.nearvolt.ev.ui.components
 
+import com.nearvolt.ev.ui.screens.voltAvoid
+
 import android.annotation.SuppressLint
 import android.provider.Settings
 import androidx.compose.foundation.layout.*
@@ -148,6 +150,9 @@ fun HostMap(hosts: List<HostSummary>, me: ApiLatLng?, selectedId: String?, dark:
     if (fullScreen) {
         Box(modifier) {
             AndroidView({ mapView }, Modifier.fillMaxSize())
+            // Keep the VOLT orb clear of MapLibre's compass (top-end) and logo/attribution button (bottom-start).
+            Box(Modifier.align(androidx.compose.ui.Alignment.TopEnd).size(72.dp).voltAvoid("map-compass"))
+            Box(Modifier.align(androidx.compose.ui.Alignment.BottomStart).size(width = 120.dp, height = 40.dp).voltAvoid("map-attribution"))
             Text("© OpenFreeMap © OpenMapTiles © OpenStreetMap contributors", style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.align(androidx.compose.ui.Alignment.BottomStart).padding(start = 92.dp, bottom = 6.dp))
         }
@@ -188,3 +193,4 @@ private fun addLayers(s: Style, dark: Boolean, cluster: Boolean = false) {
         .withFilter(eq(get("id"), literal(""))))
     s.addLayer(CircleLayer(LAYER_ME, SRC_ME).withProperties(circleRadius(8f), circleColor("#2563EB"), circleStrokeColor("#FFFFFF"), circleStrokeWidth(3f)))
 }
+

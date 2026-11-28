@@ -296,7 +296,7 @@ fun EmergencyScreen(app: AppViewModel, onBack: () -> Unit, openRequest: (String)
         ModalBottomSheet(onDismissRequest = { selected = null; vm.clearCreateError() }) {
             val batteryOk = appState.config?.capabilities?.batteryPercent == true
             // Same compatibility + battery confirmation + host acceptance + PIN flow as normal requests: no shortcuts in emergencies.
-            HostDetail(h, s, batteryOk, onRequest = { note, b -> vm.create(h, note, if (batteryOk) b else null) { id -> selected = null; openRequest(id) } })
+            HostDetail(h, s, batteryOk, onRequest = { note, b, sc -> vm.create(h, note, if (batteryOk) b else null, sc) { id -> selected = null; openRequest(id) } })
         }
     }
 }

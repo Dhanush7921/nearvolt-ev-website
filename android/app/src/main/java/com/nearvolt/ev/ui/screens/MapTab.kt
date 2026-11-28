@@ -65,7 +65,8 @@ fun MapScreen(app: AppViewModel, openRequest: (String) -> Unit, openEmergency: (
     // null = user hasn't chosen in this visit; until the preference is known the list is shown (no tile fetch).
     val lowData by c.prefs.lowData.collectAsStateWithLifecycle(null)
     var userListMode by rememberSaveable { mutableStateOf<Boolean?>(null) }
-    val listMode = userListMode ?: (lowData ?: true)
+    // null until the preference is read: render neither map nor list (no tile fetch, no list→map flash).
+    val listMode: Boolean? = userListMode ?: lowData
     var filters by remember { mutableStateOf(MapFilters()) }
     var filterSheet by remember { mutableStateOf(false) }
     var selected by remember { mutableStateOf<HostSummary?>(null) }
@@ -81,7 +82,8 @@ fun MapScreen(app: AppViewModel, openRequest: (String) -> Unit, openEmergency: (
     val hosts = remember(filters, s.result) { filters.apply(s.result?.items.orEmpty()) }
     val initialCenter = appState.config?.serviceAreas?.firstOrNull()?.center
     val dark = isDarkSurface()
-    val showList = listMode || mapFailed
+    val showList = listMode == true || mapFailed
+    val modeKnown = listMode != null || mapFailed
     LaunchedEffect(s.fix, s.loading, hosts) {
         if (!s.creating && selected != null && (s.loading || hosts.none { it.hostId == selected?.hostId })) {
             selected = null
@@ -91,7 +93,7 @@ fun MapScreen(app: AppViewModel, openRequest: (String) -> Unit, openEmergency: (
 
     Column(Modifier.fillMaxSize()) {
         // ---- Top glass controls ----
-        Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.fillMaxWidth().voltAvoid("map-top").padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             GlassCard(overMap = true) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     LeadingBadge(Icons.Outlined.Map, Tone.Good, 36.dp); Spacer(Modifier.width(10.dp))
@@ -127,7 +129,7 @@ fun MapScreen(app: AppViewModel, openRequest: (String) -> Unit, openEmergency: (
 
         Box(Modifier.weight(1f).fillMaxWidth()) {
         // ---- Map or list body ----
-        AnimatedContent(showList, transitionSpec = { fadeIn() togetherWith fadeOut() }, label = "mapList", modifier = Modifier.fillMaxSize()) { list ->
+        if (modeKnown) AnimatedContent(showList, transitionSpec = { fadeIn() togetherWith fadeOut() }, label = "mapList", modifier = Modifier.fillMaxSize()) { list ->
             if (!list) {
                 if (s.fix != null || initialCenter != null) HostMap(hosts, s.fix?.point, selected?.hostId, dark, onSelect = { selected = it }, modifier = Modifier.fillMaxSize(),
                     fullScreen = true, recenterKey = recenter, initialCenter = initialCenter, onFailed = { mapFailed = true })
@@ -149,7 +151,7 @@ fun MapScreen(app: AppViewModel, openRequest: (String) -> Unit, openEmergency: (
         }
 
         // ---- Right controls ----
-        if (!showList) Column(Modifier.align(Alignment.CenterEnd).padding(end = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        if (modeKnown && !showList) Column(Modifier.align(Alignment.CenterEnd).voltAvoid("map-controls").padding(end = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             SmallFloatingActionButton(onClick = { if (s.fix != null) recenter++ else if (!s.locating) locate() }, containerColor = MaterialTheme.colorScheme.surface) {
                 if (s.locating) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp) else Icon(Icons.Outlined.MyLocation, stringResource(R.string.map_recenter))
             }
@@ -157,7 +159,7 @@ fun MapScreen(app: AppViewModel, openRequest: (String) -> Unit, openEmergency: (
 
         }
         // ---- Bottom summary ----
-        Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.fillMaxWidth().voltAvoid("map-bottom").padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             GlassCard(overMap = true) {
                 when {
                     s.fix == null -> {
@@ -211,7 +213,7 @@ fun MapScreen(app: AppViewModel, openRequest: (String) -> Unit, openEmergency: (
             val batteryOk = appState.config?.capabilities?.batteryPercent == true
             HostDetail(h, s, batteryOk, favourite = fav,
                 onFavourite = uid?.let { u -> { scope.launch { c.accountStore.update(u) { d -> LocalRules.toggleFavourite(d, h.hostId, h.displayName, System.currentTimeMillis()) } } } },
-                onRequest = { note, battery -> vm.create(h, note, if (batteryOk) battery else null) { id -> selected = null; openRequest(id) } })
+                onRequest = { note, battery, sc -> vm.create(h, note, if (batteryOk) battery else null, sc) { id -> selected = null; openRequest(id) } })
         }
     }
 }
