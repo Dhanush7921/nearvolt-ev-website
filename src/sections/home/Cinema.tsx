@@ -361,24 +361,23 @@ export function Cinema() {
       <div className="cine-track">
         <div className="cine-hero container">
           <div className="hero-copy">
-            <span className="kicker">Planned for Andhra Pradesh</span>
+            <span className="kicker">Emergency EV charging network</span>
             <h1 className="display hero-title" data-manual>
-              Charging, <span className="ink-gradient">found closer.</span>
+              Your next charge <span className="ink-gradient">is closer.</span>
             </h1>
             <svg className="hero-underline" viewBox="0 0 400 18" preserveAspectRatio="none" aria-hidden="true">
               <path className="hu-line" d="M2 12 C 110 3, 250 17, 398 7" pathLength={1} strokeDasharray="1 1" />
               <path className="hu-pulse" d="M2 12 C 110 3, 250 17, 398 7" pathLength={1} />
             </svg>
             <p className="lede hero-lede">
-              NEARVOLT EV is an app in development to help electric car and bike riders find charging that fits their vehicle, from public stations to participating private
-              hosts, with clear estimates before they go.
+              Discover nearby verified charging hosts and request compatible EV charging assistance when you need it most. Starting in Visakhapatnam.
             </p>
             <div className="hero-actions">
-              <ButtonLink to="/contact?form=driver" icon="arrow-right" size="lg">
-                Join early access
+              <ButtonLink to="/#find" icon="arrow-right" size="lg">
+                Find Charging
               </ButtonLink>
-              <ButtonLink to="/how-it-works" variant="glass" size="lg">
-                See how it works
+              <ButtonLink to="/hosts" variant="glass" size="lg" iconStart="house">
+                Become a Host
               </ButtonLink>
             </div>
             <p className="hero-status">

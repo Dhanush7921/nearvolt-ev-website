@@ -2,7 +2,7 @@ import { StoreCards } from '../../components/StoreCards';
 
 export function StoreSection() {
   return (
-    <section className="section store-section" aria-labelledby="store-title">
+    <section className="section store-section" id="download" aria-labelledby="store-title">
       <div className="store-glow" data-depth="0.2" aria-hidden="true" />
       <div className="container store-inner">
         <div className="section-head">

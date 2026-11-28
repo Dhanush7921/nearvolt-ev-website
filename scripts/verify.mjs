@@ -25,7 +25,10 @@ const port = 4321;
 const origin = `http://localhost:${port}`;
 const out = path.join(root, 'test-results');
 fs.mkdirSync(out, { recursive: true });
-const ROUTES = ['/', '/how-it-works', '/drivers', '/hosts', '/safety', '/faq', '/contact'];
+const ROUTES = ['/', '/how-it-works', '/drivers', '/hosts', '/safety', '/faq', '/contact', '/sign-in', '/dashboard'];
+// The public API is cross-origin and only allows the GitHub Pages origin, so tests answer it from a response
+// recorded from the live endpoint (tests/fixtures/public-config.json). Never invented data.
+const API_FIXTURE = fs.readFileSync(path.join(root, 'tests/fixtures/public-config.json'), 'utf8');
 const VIEWPORTS = { desktop: { width: 1440, height: 900 }, mobile: { width: 390, height: 844 } };
 const results = [];
 const check = (name, ok, detail = '') => {
@@ -43,6 +46,11 @@ async function newPage(vp, opts = {}, { lag = true } = {}) {
   const ctx = await browser.newContext({ viewport: VIEWPORTS[vp], deviceScaleFactor: 1, hasTouch: vp === 'mobile', isMobile: vp === 'mobile', ...opts });
   const page = await ctx.newPage();
   page.setDefaultTimeout(180000);
+  await page.route('https://nearvolt-api-0rxa.onrender.com/**', (r) =>
+    r.request().url().endsWith('/api/v1/public/config')
+      ? r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: API_FIXTURE })
+      : r.fulfill({ status: 404, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: '{"ok":false}' }),
+  );
   // This container renders WebGL in software (~1 fps), and shader compilation blocks the main
   // thread. Make GSAP follow wall-clock time so animations reach their end states; real browsers
   // do not need this.
@@ -63,6 +71,13 @@ async function newPage(vp, opts = {}, { lag = true } = {}) {
   // ERR_ABORTED = a download cancelled by navigating away, not a failure
   page.on('requestfailed', (r) => !/ERR_ABORTED/.test(r.failure()?.errorText || '') && errors.push(`requestfailed: ${r.url()} ${r.failure()?.errorText}`));
   return { ctx, page, errors };
+}
+
+/** V1.2 morphing menu: open a group by click (works for mouse, touch and keyboard), then pick a link. */
+async function navTo(page, group, label) {
+  if (!group) return page.locator('.mm-links a', { hasText: label }).click();
+  await page.locator('.mm-trigger', { hasText: group }).click();
+  await page.locator(`.mm-panel[data-state="active"] a`, { hasText: label }).first().click();
 }
 
 async function waitScene(page) {
@@ -322,17 +337,17 @@ try {
     await page.goto(url('/faq'), { waitUntil: 'load' });
     await wait(1500);
     check('Deep link renders the right page', (await page.locator('h1').textContent())?.includes('Straight answers'));
-    for (const [label, p] of [
-      ['How it works', '/how-it-works'],
-      ['Drivers', '/drivers'],
-      ['Hosts', '/hosts'],
-      ['Safety', '/safety'],
-      ['Contact', '/contact'],
-      ['FAQ', '/faq'],
+    for (const [group, label, p] of [
+      ['Discover', 'How it works', '/how-it-works'],
+      ['Drivers', 'Everything for drivers', '/drivers'],
+      ['Hosts', 'Everything for hosts', '/hosts'],
+      ['Safety', 'Safety and trust', '/safety'],
+      [null, 'Contact', '/contact'],
+      ['About', 'FAQ', '/faq'],
     ]) {
-      await page.locator('.nav-links a', { hasText: label }).click();
+      await navTo(page, group, label);
       await wait(2000);
-      check(`Nav "${label}" navigates`, page.url() === url(p), page.url());
+      check(`Nav "${group ? `${group} › ` : ''}${label}" navigates`, page.url() === url(p), page.url());
     }
     await page.goBack();
     await wait(2000);
@@ -448,10 +463,126 @@ try {
     const op = await page.locator('.hero-title').evaluate((el) => getComputedStyle(el).opacity);
     check('Reduced motion: content visible immediately', op === '1');
     await page.screenshot({ path: path.join(out, 'reduced-motion-home.png') });
-    await page.locator('.nav-links a', { hasText: 'FAQ' }).click();
+    await navTo(page, 'About', 'FAQ');
     await wait(700);
     check('Reduced motion: navigation is instant', page.url() === url('/faq'));
     check('Reduced motion: no console errors', errors.length === 0, errors.slice(0, 4).join(' | '));
+    await ctx.close();
+  }
+
+  // ---------- V1.2: morphing menu, discovery, sign-in preview, dashboard, contact ----------
+  {
+    const { ctx, page, errors } = await newPage('desktop');
+    await page.goto(url('/drivers'), { waitUntil: 'load' });
+    await wait(1500);
+    await page.mouse.move(470, 44);
+    const trig = page.locator('.mm-trigger', { hasText: 'Discover' });
+    await trig.hover();
+    await wait(700);
+    check('Menu: hover opens the shared dropdown', (await page.locator('.mm-dd.open').count()) === 1 && (await trig.getAttribute('aria-expanded')) === 'true');
+    const w1 = await page.locator('.mm-dd').evaluate((e) => e.style.getPropertyValue('--w'));
+    await page.locator('.mm-trigger', { hasText: 'Hosts' }).hover();
+    await wait(700);
+    const w2 = await page.locator('.mm-dd').evaluate((e) => e.style.getPropertyValue('--w'));
+    const same = (await page.locator('.mm-dd').count()) === 1 && (await page.locator('.mm-dd.open').count()) === 1;
+    check('Menu: switching morphs one container (no close/reopen)', same && w1 !== w2 && (await page.locator('.mm-panel[data-state="active"]').getAttribute('data-panel')) === 'hosts', `${w1} → ${w2}`);
+    await page.keyboard.press('Escape');
+    await wait(500);
+    check('Menu: Escape closes and returns focus to the trigger', (await page.locator('.mm-dd.open').count()) === 0 && (await page.evaluate(() => document.activeElement?.textContent?.trim())) === 'Hosts');
+    await page.locator('.mm-trigger', { hasText: 'Safety' }).click();
+    await wait(400);
+    await page.mouse.click(700, 700);
+    await wait(500);
+    check('Menu: outside click closes', (await page.locator('.mm-dd.open').count()) === 0);
+    await page.locator('.mm-trigger', { hasText: 'About' }).focus();
+    await page.keyboard.press('ArrowDown');
+    await wait(500);
+    check('Menu: keyboard ArrowDown opens and focuses the first link', (await page.evaluate(() => document.activeElement?.closest('.mm-panel')?.getAttribute('data-panel'))) === 'about');
+    const hrefs = await page.$$eval('.mm-panel a', (as) => as.map((a) => a.getAttribute('href')));
+    const pages = new Set(['/', '/how-it-works', '/drivers', '/hosts', '/safety', '/faq', '/contact', '/legal', '/dashboard', '/sign-in']);
+    const bad = hrefs.filter((h) => !pages.has(('/' + (h || '').slice(base.length)).split(/[?#]/)[0].replace(/\/$/, '') || '/'));
+    check('Menu: every link targets an existing page', hrefs.length >= 15 && bad.length === 0, bad.join(', '));
+
+    // discovery (API answered from the recorded live fixture)
+    await page.goto(url('/?nointro'), { waitUntil: 'load' });
+    await wait(1500);
+    await page.locator('#find').scrollIntoViewIfNeeded();
+    await page.locator('#find button[type="submit"]').click();
+    await wait(400);
+    check('Find: asks for a location first (no silent result)', (await page.locator('#find .composer-error').count()) === 1);
+    await page.locator('#find .composer-input').fill('Visakhapatnam');
+    await page.locator('#find button[type="submit"]').click();
+    await page.waitForSelector('#find .result.is-in', { timeout: 20000 });
+    const txt = await page.locator('#find .result').textContent();
+    check('Find: live service-area check (Visakhapatnam served)', /serves Visakhapatnam/.test(txt || ''), txt?.slice(0, 120));
+    check('Find: never lists hosts or addresses on the website', !/rating|₹|km away from host/i.test(txt || '') && (await page.locator('#find .result li').count()) === 0);
+    await page.locator('#find .composer-input').fill('Hyderabad');
+    await page.locator('#find button[type="submit"]').click();
+    await wait(800);
+    check('Find: unknown place is not claimed as served', /not one of our active areas/.test((await page.locator('#find .result').textContent()) || ''));
+    await page.locator('#find .cswitch').click();
+    await page.locator('#find button[type="submit"]').click();
+    await wait(800);
+    check('Find: emergency preference shows 112 safety guidance', /call 112/i.test((await page.locator('#find .result').textContent()) || ''));
+    check('Trust: status legend and session timeline present', (await page.locator('#trust .tcard').count()) === 10 && (await page.locator('#session .timeline li').count()) === 5);
+
+    // sign-in preview: no fake success
+    await page.goto(url('/sign-in'), { waitUntil: 'load' });
+    await wait(1200);
+    await page.locator('.auth-form button[type="submit"]').click();
+    check('Sign-in: validation errors shown', (await page.locator('.ferr').count()) >= 2);
+    await page.locator('.auth-form input[type="email"]').fill('driver@example.com');
+    await page.locator('.auth-form input[autocomplete="current-password"]').fill('secret123');
+    await page.locator('.auth-form button[type="submit"]').click();
+    await wait(400);
+    const note = (await page.locator('.auth-notice').textContent()) || '';
+    check('Sign-in: preview never reports success, hands off to the app', /not signed in/.test(note) && !/welcome back,|signed in successfully/i.test(note));
+    await page.locator('.social-btn', { hasText: 'mobile' }).click();
+    check('Sign-in: phone OTP is disabled (no SMS sent)', (await page.locator('.otp input:disabled').count()) === 6 && (await page.locator('.auth-form button:disabled', { hasText: 'Send code' }).count()) === 1);
+    check('Sign-in: admin login not exposed', (await page.locator('a[href*="admin"]').count()) === 0);
+
+    // dashboard preview
+    await page.goto(url('/dashboard#activity'), { waitUntil: 'load' });
+    await wait(1500);
+    check('Dashboard: deep link opens Activity (empty state, no invented history)', /lives in the app/.test((await page.locator('.dash-main').textContent()) || ''));
+    await page.locator('.dash-tab', { hasText: 'Overview' }).click();
+    await wait(1200);
+    check('Dashboard: live service area from the API', /Visakhapatnam · 30 km radius/.test((await page.locator('.schem-label').textContent()) || ''));
+
+    // contact
+    await page.goto(url('/contact'), { waitUntil: 'load' });
+    await wait(1200);
+    await page.locator('.cf button[type="submit"]').click();
+    await wait(300);
+    check('Contact: validation on all required fields', (await page.locator('.cf .ferr').count()) >= 5);
+    await page.locator('.cf input[autocomplete="name"]').fill('Test Driver');
+    await page.locator('.cf input[type="email"]').fill('driver@example.com');
+    await page.locator('.cf .chip', { hasText: 'Safety Concern' }).click();
+    check('Contact: safety category shows emergency (112) notice', (await page.locator('.cf-urgent').count()) === 1);
+    await page.locator('.cf textarea').fill('Testing the contact form validation path.');
+    await page.locator('.cf-consent input').check();
+    await page.locator('.cf button[type="submit"]').click();
+    await wait(800);
+    const live = (await page.locator('.cf').textContent()) || '';
+    check('Contact: no fake confirmation without a form endpoint', /Demo mode: .*nothing was sent/.test(live) && (await page.locator('.cf-done').count()) === 0);
+    await page.goto(url('/contact?category=safety'), { waitUntil: 'load' });
+    await wait(1000);
+    check('Footer "Report a Concern" preselects Safety Concern', (await page.locator('.cf .chip[aria-checked="true"]').textContent())?.includes('Safety Concern'));
+    check('V1.2 flows: no console errors', errors.length === 0, errors.slice(0, 4).join(' | '));
+    await ctx.close();
+  }
+  {
+    const { ctx, page, errors } = await newPage('mobile');
+    for (const r of ['/sign-in', '/dashboard', '/contact']) {
+      await page.goto(url(r), { waitUntil: 'load' });
+      await wait(1200);
+      check(`Mobile ${r}: no horizontal overflow`, (await overflow(page)) <= 0);
+    }
+    await page.locator('.menu-btn').click();
+    await wait(1600);
+    const top = await page.locator('.menu-home').boundingBox();
+    check('Mobile menu: grouped sheet starts below the bar (not clipped)', !!top && top.y >= 60, JSON.stringify(top));
+    check('Mobile V1.2: no console errors', errors.length === 0, errors.slice(0, 4).join(' | '));
     await ctx.close();
   }
 

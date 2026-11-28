@@ -1,12 +1,13 @@
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { Icon, type IconName } from '../components/Icon';
 import { LeadForm } from '../components/LeadForm';
-import { PageHero } from '../components/PageHero';
+import { ContactForm } from '../components/ContactForm';
 import { site } from '../config/site';
 import { gsap } from '../lib/gsap';
 import { leadsMode, type LeadType } from '../lib/leads';
 import { prefersReducedMotion } from '../lib/prefs';
 import { useNavigate, useSearchParam } from '../lib/router';
+import { useReveal } from '../lib/reveal';
 import { useMotion } from '../motion/kinetic';
 
 const TABS: { id: LeadType; label: string; icon: IconName; blurb: string }[] = [
@@ -26,6 +27,13 @@ export default function Contact() {
   const initial = (TABS.find((t) => t.id === param)?.id ?? 'driver') as LeadType;
   const [tab, setTab] = useState<LeadType>(initial);
   useMotion(ref);
+  useReveal(ref);
+  useEffect(() => {
+    // Deep links like /contact?form=host land on the specific forms below the contact card.
+    if (!param) return;
+    const t = window.setTimeout(() => document.getElementById('forms')?.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' }), 500);
+    return () => window.clearTimeout(t);
+  }, [param]);
 
   useEffect(() => {
     const p = TABS.find((t) => t.id === param)?.id;
@@ -60,23 +68,45 @@ export default function Contact() {
 
   return (
     <div className="page" ref={ref}>
-      <PageHero
-        kicker="Contact and early access"
-        icon="send"
-        title={
-          <>
-            Plug into the <span className="ink-gradient">early list.</span>
-          </>
-        }
-        lede="Register interest as a driver or host, propose a partnership, or just ask a question. We read everything and reply to what needs a reply."
-      >
-        {site.contactEmail && (
-          <a className="text-link" href={`mailto:${site.contactEmail}`}>
-            <Icon name="mail" /> {site.contactEmail}
-          </a>
-        )}
-      </PageHero>
-      <section className="section contact" aria-label="Forms">
+      <section className="cine-contact" aria-labelledby="cc-title">
+        <div className="cc-card">
+          <img className="cc-bg" src={`${site.base}media/home-plug-poster-land.jpg`} alt="" decoding="async" />
+          <div className="cc-veil" aria-hidden="true" />
+          <div className="cc-grid">
+            <div className="cc-copy">
+              <span className="eyebrow cc-eyebrow">Contact NEARVOLT EV</span>
+              <h1 className="cc-title mask-reveal" id="cc-title">
+                <span className="mask-line">
+                  <span>Let’s power a</span>
+                </span>
+                <span className="mask-line">
+                  <span className="ink-emerald">better journey.</span>
+                </span>
+              </h1>
+              <p className="cc-lede" data-reveal>
+                Questions about emergency charging, becoming a host or partnering with NEARVOLT EV? Get in touch.
+              </p>
+              {site.contactEmail && (
+                <a className="cc-mail" href={`mailto:${site.contactEmail}`} data-reveal>
+                  <Icon name="mail" /> {site.contactEmail}
+                </a>
+              )}
+              <p className="cc-sos" data-reveal>
+                <Icon name="phone" /> Roadside or medical emergency? Call <a href="tel:112">112</a>.
+              </p>
+            </div>
+            <div className="cc-form lg" data-reveal>
+              <h2 className="h3">Send us a message</h2>
+              <ContactForm />
+            </div>
+          </div>
+        </div>
+      </section>
+      <section className="section contact" id="forms" aria-labelledby="forms-title">
+        <div className="container section-head contact-forms-head">
+          <span className="kicker">Early access and host interest</span>
+          <h2 className="h2" id="forms-title">Prefer a specific form?</h2>
+        </div>
         <div className="container contact-grid">
           <div className="contact-side">
             <div className="tabs" role="tablist" aria-label="Choose a form" aria-orientation="vertical" ref={tabsRef}>

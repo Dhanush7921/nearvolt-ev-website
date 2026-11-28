@@ -9,6 +9,9 @@ export const site = {
   region: 'Andhra Pradesh',
   contactEmail: (env.VITE_CONTACT_EMAIL || '').trim(),
   leadsEndpoint: (env.VITE_LEADS_ENDPOINT || '').trim(),
+  // Public NEARVOLT EV API (Render). Only unauthenticated /public endpoints are called from the website.
+  // Set VITE_API_BASE to an empty string to disable the live service-area check.
+  apiBase: (env.VITE_API_BASE ?? 'https://nearvolt-api-0rxa.onrender.com').trim().replace(/\/$/, ''),
   base: env.BASE_URL || '/',
 };
 

@@ -1,0 +1,1 @@
+{"ok":true,"data":{"maintenance":{"enabled":false,"message":""},"minSupportedVersionCode":1,"latestVersionCode":1,"featureFlags":{"payments":false,"phoneLogin":false},"serviceAreas":[{"id":"vizag","name":"Visakhapatnam","center":{"lat":17.6868,"lng":83.2185},"radiusKm":30}],"supportContact":{"email":"","phone":""},"requestTtlSeconds":300}}
