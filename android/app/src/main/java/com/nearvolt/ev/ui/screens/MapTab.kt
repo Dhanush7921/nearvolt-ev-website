@@ -78,6 +78,12 @@ fun MapScreen(app: AppViewModel, openRequest: (String) -> Unit, openEmergency: (
     val initialCenter = appState.config?.serviceAreas?.firstOrNull()?.center
     val dark = isDarkSurface()
     val showList = listMode || mapFailed
+    LaunchedEffect(s.fix, s.loading, hosts) {
+        if (!s.creating && selected != null && (s.loading || hosts.none { it.hostId == selected?.hostId })) {
+            selected = null
+            vm.clearCreateError()
+        }
+    }
 
     Column(Modifier.fillMaxSize()) {
         // ---- Top glass controls ----
@@ -163,9 +169,13 @@ fun MapScreen(app: AppViewModel, openRequest: (String) -> Unit, openEmergency: (
                             "OFF" -> InlineMessage(stringResource(R.string.find_issue_off))
                             "UNAVAILABLE" -> InlineMessage(stringResource(R.string.find_issue_unavailable))
                             "MANUAL_FAILED" -> InlineMessage(stringResource(R.string.find_issue_manual))
+                            else -> Unit
                         }
                     }
-                    s.error != null -> ErrorState(s.error!!) { vm.search() }
+                    s.error != null -> {
+                        InlineMessage(s.error!!.message)
+                        TextButton(onClick = { vm.search() }) { Text(stringResource(R.string.action_retry)) }
+                    }
                     s.loading && s.result == null -> { Text(stringResource(R.string.map_loading), style = MaterialTheme.typography.titleSmall); Spacer(Modifier.height(6.dp)); EnergyFlowBar(Modifier.fillMaxWidth(), 4.dp) }
                     else -> {
                         Row(verticalAlignment = Alignment.CenterVertically) {
