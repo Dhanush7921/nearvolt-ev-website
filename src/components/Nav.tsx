@@ -82,6 +82,7 @@ export function Nav() {
   const wasOpen = useRef(false);
   const current = useRef<string | null>(null);
   const closeTimer = useRef<number | undefined>(undefined);
+  const hoverOpenedAt = useRef(0); // a click right after a hover-open must not close the menu again
 
   const panelEl = (id: string) => ddRef.current?.querySelector<HTMLElement>(`[data-panel="${id}"]`) ?? null;
   const triggerEl = (id: string) => innerRef.current?.querySelector<HTMLElement>(`[data-menu="${id}"]`) ?? null;
@@ -277,8 +278,16 @@ export function Nav() {
                   data-current={groupActive(g) || undefined}
                   aria-expanded={openId === g.id}
                   aria-controls={`mm-${g.id}`}
-                  onPointerEnter={(e) => e.pointerType === 'mouse' && openMenu(g.id)}
-                  onClick={() => (current.current === g.id ? close() : openMenu(g.id))}
+                  onPointerEnter={(e) => {
+                    if (e.pointerType !== 'mouse' || current.current === g.id) return;
+                    hoverOpenedAt.current = Date.now();
+                    openMenu(g.id);
+                  }}
+                  onClick={() => {
+                    if (current.current !== g.id) return openMenu(g.id);
+                    if (Date.now() - hoverOpenedAt.current < 600) return;
+                    close();
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === 'ArrowDown') {
                       e.preventDefault();
