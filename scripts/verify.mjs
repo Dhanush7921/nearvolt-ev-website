@@ -422,29 +422,29 @@ try {
     await wait(1500);
     const notice = await page.locator('.notice').first().textContent();
     check('Form shows a clear demo state when no endpoint is configured', /Demo mode/.test(notice), notice.slice(0, 70));
-    await page.locator('form button[type="submit"]').click();
+    await page.locator('#form-panel form button[type="submit"]').click();
     await wait(600);
-    const errs = await page.locator('.field-error').count();
+    const errs = await page.locator('#form-panel .field-error').count();
     check('Empty submit shows validation errors', errs >= 4, `${errs} errors`);
     await page.fill('#f-general-name', 'Test Rider');
     await page.fill('#f-general-email', 'not-an-email');
     await page.locator('#f-general-email').blur();
     await wait(200);
-    check('Invalid email rejected', (await page.locator('.field-error', { hasText: 'email' }).count()) === 1);
+    check('Invalid email rejected', (await page.locator('#form-panel .field-error', { hasText: 'email' }).count()) === 1);
     await page.fill('#f-general-email', 'rider@example.com');
     await page.selectOption('#f-general-topic', { index: 1 });
     await page.fill('#f-general-message', 'Testing the general enquiry form.');
-    await page.locator('input[name="consent"]').check();
-    await page.locator('form button[type="submit"]').dblclick();
+    await page.locator('#form-panel input[name="consent"]').check();
+    await page.locator('#form-panel form button[type="submit"]').dblclick();
     await wait(1500);
-    const res = await page.locator('.result').first().textContent();
+    const res = await page.locator('#form-panel .result').first().textContent();
     check('Valid submit in demo mode says nothing was sent or saved', /nothing was sent or saved/i.test(res), res.slice(0, 80));
     await page.screenshot({ path: path.join(out, 'form-demo-result.png') });
     for (const t of ['driver', 'host', 'partner']) {
       await page.goto(url(`/contact?form=${t}`), { waitUntil: 'load' });
       await wait(1200);
       const sel = await page.locator('.tab[aria-selected="true"]').getAttribute('data-tab');
-      const form = await page.locator('form .field').count();
+      const form = await page.locator('#form-panel form .field').count();
       check(`Contact: ${t} form selected from link and rendered`, sel === t && form >= 4, `${sel}, ${form} fields`);
     }
     check('Forms: no console errors', errors.length === 0, errors.slice(0, 4).join(' | '));
