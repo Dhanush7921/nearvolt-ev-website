@@ -68,9 +68,9 @@ export default function Dashboard() {
         <header className="dash-head">
           <div>
             <p className="dash-hello">Welcome</p>
-            <p className="dash-who">
+            <h1 className="dash-who">
               Dashboard preview <span className="preview-tag">Illustrative · not live</span>
-            </p>
+            </h1>
           </div>
           <div className="dash-tools">
             <span className="dash-loc">
