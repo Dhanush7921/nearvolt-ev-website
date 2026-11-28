@@ -160,7 +160,6 @@
     <string name="role_customer_body">సమీపంలో ఛార్జింగ్ కనుగొని అభ్యర్థించండి</string>
     <string name="role_host">ఛార్జింగ్ హోస్ట్</string>
     <string name="role_host_body">మీ ధృవీకరించిన ఛార్జింగ్ పాయింట్‌ను అందించండి</string>
-    <string name="setup_role_locked">దీన్ని తర్వాత సపోర్ట్ ద్వారా మార్చవచ్చు.</string>
     <string name="setup_role_q">మీరు NEARVOLT EV ను ఎలా ఉపయోగిస్తారు?</string>
     <string name="setup_title">మీ ప్రొఫైల్ సెట్ చేయండి</string>
     <string name="setup_vehicle">మీ వాహనం</string>

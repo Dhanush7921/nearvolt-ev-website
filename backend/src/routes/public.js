@@ -17,7 +17,7 @@ export function publicRoutes({ db, settings, config }) {
         supportContact: s.supportContact, requestTtlSeconds: config.REQUEST_TTL_SECONDS,
         // Server capabilities (code-defined, not admin-editable). V1.1 apps only use these features when advertised,
         // so a V1.1 APK keeps working against a V1.0 backend during rollout and after a rollback.
-        capabilities: { apiLevel: 2, sessionPin: true, batteryPercent: true } });
+        capabilities: { apiLevel: 3, sessionPin: true, batteryPercent: true, dualRole: true, socketGate: true } });
     } catch (e) { next(e); }
   });
   // Public account-deletion request (Play Store requirement for users who no longer have the app).

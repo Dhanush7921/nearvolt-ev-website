@@ -131,7 +131,9 @@ class FindViewModel : ViewModel() {
         if (type == null || conn == null) return@launch
         val key = createKey ?: UUID.randomUUID().toString().also { createKey = it }
         state.update { it.copy(creating = true, createError = null) }
-        val body = CreateRequestBody(host.hostId, type, conn, fix.point, true, note?.ifBlank { null }, battery)
+        // Wall-socket confirmation is only sent to servers that understand it (strict schemas reject unknown fields).
+        val sendSocket = socketConfirmed && conn in com.nearvolt.ev.catalogue.RequestGate.SOCKET_RATING && com.nearvolt.ev.data.api.ServerCapabilities.current.socketGate
+        val body = CreateRequestBody(host.hostId, type, conn, fix.point, true, note?.ifBlank { null }, battery, socketConfirmation = if (sendSocket) true else null)
         when (val r = c.repo.createRequest(body, key)) {
             is ApiResult.Ok -> { createKey = null; state.update { it.copy(creating = false, active = r.value) }; onCreated(r.value.id) }
             is ApiResult.Err -> { if (r.code != "OFFLINE") createKey = null; state.update { it.copy(creating = false, createError = r.message) }; if (r.code == "HOST_UNAVAILABLE") search() }

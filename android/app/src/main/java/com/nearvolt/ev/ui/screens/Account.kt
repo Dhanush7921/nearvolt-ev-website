@@ -113,11 +113,16 @@ fun AccountScreen(app: AppViewModel, openSupport: () -> Unit, openGarage: () -> 
             Spacer(Modifier.height(10.dp))
             Text(me.name, style = MaterialTheme.typography.titleLarge)
             Text(listOfNotNull(me.email, com.nearvolt.ev.ui.components.PhoneRules.mask(me.phone)).joinToString(" · "), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.height(6.dp)); StatusPill(stringResource(if (me.role == "host") R.string.role_host else R.string.role_customer), Tone.Good)
+            Spacer(Modifier.height(6.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                if (me.canDrive) StatusPill(stringResource(R.string.role_customer), Tone.Good)
+                if (me.canHost) StatusPill(stringResource(R.string.role_host), Tone.Good)
+            }
             TextButton(onClick = { editing = true }) { Text(stringResource(R.string.account_edit)) }
         }
         if (me.phone == null && s.config?.featureFlags?.get("phoneLogin") == true) SecondaryButton(stringResource(R.string.account_link_phone), { linkPhone = true }, icon = Icons.Outlined.Phone)
-        if (me.role != "host") {
+        ModeSwitch(app)
+        if (!s.hostMode && me.canDrive) {
             SecondaryButton(stringResource(R.string.garage_title), openGarage, icon = Icons.Outlined.DirectionsCar)
             SecondaryButton(stringResource(R.string.fav_title), openFavourites, icon = Icons.Outlined.FavoriteBorder)
         }

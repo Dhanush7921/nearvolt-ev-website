@@ -34,7 +34,15 @@ data class AppState(
     val emailLinkNeedsEmail: String? = null,
     val openRequestId: String? = null,
     val updateAvailable: Boolean = false,
-)
+    /** V1.4: preferred UI mode ("driver" | "host"). Only a display choice — every privileged action is authorized by the server. */
+    val uiMode: String? = null,
+) {
+    val canDrive get() = me?.canDrive == true
+    val canHost get() = me?.canHost == true
+    /** Effective mode: the stored choice if this account has that mode, otherwise the account's legacy primary role. */
+    val hostMode get() = when { uiMode == "host" && canHost -> true; uiMode == "driver" && canDrive -> false; else -> me?.role == "host" || (!canDrive && canHost) }
+    val dualRoleServer get() = config?.capabilities?.dualRole == true
+}
 
 const val TERMS_VERSION = "1.0"
 const val PRIVACY_VERSION = "1.0"
@@ -48,6 +56,7 @@ class AppViewModel : ViewModel() {
 
     init {
         viewModelScope.launch { container.prefs.theme.collect { t -> _state.update { it.copy(theme = t) } } }
+        viewModelScope.launch { container.prefs.uiMode.collect { m -> _state.update { it.copy(uiMode = m) } } }
         viewModelScope.launch {
             combine(container.prefs.onboarded, container.auth.userFlow.map { it?.uid }.distinctUntilChanged()) { a, b -> a to b }
                 .collect { refresh() }
@@ -71,6 +80,7 @@ class AppViewModel : ViewModel() {
             }
         }
         val vc = BuildConfig.VERSION_CODE
+        com.nearvolt.ev.data.api.ServerCapabilities.current = cfg.capabilities
         _state.update { it.copy(config = cfg, updateAvailable = vc < cfg.latestVersionCode) }
         when {
             vc < cfg.minSupportedVersionCode -> { meJob?.cancel(); return@coroutineScope done(Phase.UpdateRequired) }
@@ -130,6 +140,24 @@ class AppViewModel : ViewModel() {
 
     fun onProfileChanged(me: Me) = _state.update { it.copy(me = me) }
 
+    // ---- V1.4 dual role ----
+    /** Instant switch, no sign-out. Ignored if the account doesn't have that mode (the server would refuse anyway). */
+    fun setMode(mode: String) = viewModelScope.launch {
+        val s = _state.value
+        if ((mode == "host" && s.canHost) || (mode == "driver" && s.canDrive)) container.prefs.setUiMode(mode)
+    }
+    /** Adds Driver or Host mode to this same account via the server, refreshes the token claims and switches to it. */
+    fun enableMode(mode: String, onDone: (String?) -> Unit) = viewModelScope.launch {
+        when (val r = container.repo.addCapability(mode)) {
+            is ApiResult.Err -> onDone(r.message)
+            is ApiResult.Ok -> {
+                container.auth.refreshClaims()
+                when (val m = container.repo.me()) { is ApiResult.Ok -> _state.update { it.copy(me = m.value.copy(admin = it.me?.admin ?: m.value.admin)) }; else -> {} }
+                container.prefs.setUiMode(mode); onDone(null)
+            }
+        }
+    }
+
     // ---- Auth actions ----
     fun google(activity: Activity, onDone: (String?) -> Unit) = viewModelScope.launch {
         // onDone is always called (success, failure, cancel, timeout) so the button spinner always resets.
@@ -153,6 +181,6 @@ class AppViewModel : ViewModel() {
     }
     /** Wipes this account's device-local data (garage, favourites, recent searches) and the session discovery cache. */
     private suspend fun wipeLocal() { container.auth.currentUser?.uid?.let { container.accountStore.wipe(it) }; container.discovery.value = com.nearvolt.ev.DiscoverySnapshot() }
-    fun signOut() = viewModelScope.launch { wipeLocal(); container.auth.signOut(); _state.update { AppState(loading = false, phase = Phase.SignIn, theme = it.theme, config = it.config) } }
-    fun deleted() = viewModelScope.launch { wipeLocal(); container.auth.localSignOutAfterDeletion(); _state.update { AppState(loading = false, phase = Phase.SignIn, theme = it.theme, config = it.config, message = "Your account was deleted.") } }
+    fun signOut() = viewModelScope.launch { wipeLocal(); container.prefs.setUiMode(null); container.auth.signOut(); _state.update { AppState(loading = false, phase = Phase.SignIn, theme = it.theme, config = it.config) } }
+    fun deleted() = viewModelScope.launch { wipeLocal(); container.prefs.setUiMode(null); container.auth.localSignOutAfterDeletion(); _state.update { AppState(loading = false, phase = Phase.SignIn, theme = it.theme, config = it.config, message = "Your account was deleted.") } }
 }

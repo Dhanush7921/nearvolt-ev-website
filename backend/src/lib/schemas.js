@@ -15,6 +15,8 @@ export const consentSchema = z.object({
   termsVersion: str(20), privacyVersion: str(20), locationConsent: z.boolean(), notificationConsent: z.boolean(),
 }).strict();
 export const roleSchema = z.object({ role: z.enum(['customer', 'host']) }).strict();
+// V1.4: add a capability to an existing account. Only driver/host; never admin.
+export const capabilitySchema = z.object({ capability: z.enum(['driver', 'host']) }).strict();
 
 export const hostProfileSchema = z.object({
   displayName: str(60),
@@ -60,6 +62,9 @@ export const createRequestSchema = z.object({
   customerLocation: latLng, compatibilityConfirmed: z.literal(true), note: str(300, 0).optional(),
   // User-confirmed remaining battery (optional for V1.0 clients).
   batteryPercent: z.number().int().min(0).max(100).optional(),
+  // V1.4: required for wall-socket connectors; driver confirms their portable charger is rated for the socket (no extension/adapter).
+  // Older clients cannot send it, so they cannot create socket requests.
+  socketConfirmation: z.literal(true).optional(),
 }).strict();
 export const transitionSchema = z.object({
   action: z.enum(['accept', 'reject', 'cancel', 'arrive', 'start', 'complete', 'dispute']),

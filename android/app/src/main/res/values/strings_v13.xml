@@ -209,4 +209,15 @@
     <string name="gate_socket_over">This host\'s declared power is above what this socket is rated for, so requests are disabled.</string>
     <string name="gate_socket_info">Wall socket: you\'ll need your vehicle\'s own portable charger. A socket is never treated as compatible automatically.</string>
     <string name="gate_socket_confirm">My portable charger is rated for this socket, and I won\'t use an extension cord or adapter.</string>
+    <!-- V1.4 dual role -->
+    <string name="mode_driver">Driver</string>
+    <string name="mode_host">Host</string>
+    <string name="mode_become_host">Become a host</string>
+    <string name="mode_become_host_body">Adds Host mode to this account. Next, create your listing and submit photos and an electrical safety document. Your charging point stays offline until NEARVOLT verifies and approves it.</string>
+    <string name="mode_enable_driver">Turn on Driver mode</string>
+    <string name="mode_enable_driver_body">Adds Driver mode to this account so you can find and request charging from other hosts. Add your vehicle in My Garage before requesting.</string>
+    <string name="mode_same_account">Same account and sign-in. Switch modes anytime without signing out. You can\'t book your own charging point.</string>
+    <string name="mode_enable_confirm">Turn on</string>
+    <string name="volt_host_title">NEARVOLT host requirements</string>
+    <string name="volt_host_rules">Earthing and RCD/ELCB protection, rated cabling and a dry covered area are required for every listing. Wall-socket charging also needs a dedicated circuit and a supply within the socket\'s rating (15 A or 16 A). Changing equipment sends an approved listing back for review.</string>
 </resources>

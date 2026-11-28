@@ -153,6 +153,9 @@ class VoltViewModel : ViewModel() {
     }
 }
 
+/** Host-mode suggestions map to reviewed knowledge records (dedicated, rcd, extension, home-safety, host-registration, session-pin). */
+val HOST_SUGGESTIONS = listOf("Dedicated charging circuit", "Residual current device", "Extension cord charging", "Home charging safety",
+    "Become a charging host", "Session PIN verification")
 private val SUGGESTIONS = listOf("How long to charge 30 kWh from 20% to 80% at 3.3 kW", "Is a matching connector enough for compatibility?", "My battery is low, what should I do?",
     "How does the session PIN work?", "What is the difference between kW and kWh?", "Tips to extend battery life", "Is it safe to charge in rain?", "What does SOC mean?")
 
@@ -238,7 +241,8 @@ fun VoltMark(modifier: Modifier, animate: Boolean, ring: Color = Color.White) {
 // ============================== FULL-SCREEN VOLT ==============================
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun VoltScreen(uid: String, onAction: (VoltAction) -> Unit, vm: VoltViewModel = viewModel(key = "volt-$uid")) {
+fun VoltScreen(uid: String, onAction: (VoltAction) -> Unit, hostMode: Boolean = false, vm: VoltViewModel = viewModel(key = "volt-$uid")) {
+    val suggestions = if (hostMode) HOST_SUGGESTIONS else SUGGESTIONS
     val s by vm.state.collectAsStateWithLifecycle()
     val seed by VoltController.seed.collectAsStateWithLifecycle()
     LaunchedEffect(uid) { vm.init(uid) }
@@ -317,9 +321,20 @@ fun VoltScreen(uid: String, onAction: (VoltAction) -> Unit, vm: VoltViewModel = 
                     s.error?.let { InlineMessage(it) }
                 }
             }
+            if (hostMode) item(key = "hostCtx") {
+                // NEARVOLT's own host requirements (enforced by the server listing schema and request checks), not general advice.
+                com.nearvolt.ev.ui.components.GlassCard(accent = true) {
+                    Text(stringResource(R.string.volt_host_title), style = MaterialTheme.typography.titleSmall)
+                    Text(stringResource(R.string.volt_host_rules), style = MaterialTheme.typography.bodySmall)
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        listOf(VoltAction.OPEN_HOST_DASHBOARD, VoltAction.OPEN_LISTING, VoltAction.OPEN_SAFETY).forEach { a ->
+                            AssistChip({ act(a) }, label = { Text(a.label) }, leadingIcon = { Icon(actionIcon(a), null, Modifier.size(16.dp)) }) }
+                    }
+                }
+            }
             if (s.messages.isEmpty()) item(key = "suggest") {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SUGGESTIONS.forEach { q -> SuggestionChip({ vm.send(q) }, label = { Text(q) }, enabled = s.ready) }
+                    suggestions.forEach { q -> SuggestionChip({ vm.send(q) }, label = { Text(q) }, enabled = s.ready) }
                 }
             }
             items(s.messages.withIndex().toList(), key = { "m${it.index}" }) { (i, m) ->
@@ -330,7 +345,7 @@ fun VoltScreen(uid: String, onAction: (VoltAction) -> Unit, vm: VoltViewModel = 
                 Text(stringResource(R.string.volt_thinking), style = MaterialTheme.typography.bodySmall) } }
             if (s.messages.isNotEmpty()) item(key = "more") {
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    SUGGESTIONS.shuffled(java.util.Random(s.messages.size.toLong())).take(3).forEach { q -> SuggestionChip({ vm.send(q) }, label = { Text(q, maxLines = 1) }) }
+                    suggestions.shuffled(java.util.Random(s.messages.size.toLong())).take(3).forEach { q -> SuggestionChip({ vm.send(q) }, label = { Text(q, maxLines = 1) }) }
                 }
             }
         }
@@ -382,15 +397,16 @@ private fun actionIcon(a: VoltAction) = when (a) {
     VoltAction.OPEN_MAP, VoltAction.FIND_COMPATIBLE_HOST -> Icons.Outlined.Map; VoltAction.OPEN_GARAGE -> Icons.Outlined.DirectionsCar
     VoltAction.OPEN_ACTIVITY -> Icons.Outlined.History; VoltAction.OPEN_SUPPORT -> Icons.Outlined.SupportAgent; VoltAction.OPEN_SAFETY -> Icons.Outlined.Shield
     VoltAction.CALCULATE_CHARGING_TIME -> Icons.Outlined.Calculate; VoltAction.OPEN_EMERGENCY_DIALER -> Icons.Outlined.Sos
+    VoltAction.OPEN_HOST_DASHBOARD -> Icons.Outlined.SpaceDashboard; VoltAction.OPEN_LISTING -> Icons.Outlined.EvStation
 }
 
 /** Full-screen VOLT layer that grows out of the orb and shrinks back into it on close. */
 @Composable
-fun VoltOverlay(uid: String, onAction: (VoltAction) -> Unit) {
+fun VoltOverlay(uid: String, onAction: (VoltAction) -> Unit, hostMode: Boolean = false) {
     val open by VoltController.open.collectAsStateWithLifecycle()
     val reduced = rememberReducedMotion()
     AnimatedVisibility(open, enter = if (reduced) fadeIn(tween(1)) else fadeIn(tween(200)) + scaleIn(tween(320, easing = FastOutSlowInEasing), 0.6f, TransformOrigin(0.9f, 0.88f)),
         exit = if (reduced) fadeOut(tween(1)) else fadeOut(tween(180)) + scaleOut(tween(240), 0.6f, TransformOrigin(0.9f, 0.88f))) {
-        VoltScreen(uid, onAction)
+        VoltScreen(uid, onAction, hostMode)
     }
 }

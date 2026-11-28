@@ -38,9 +38,17 @@ private data class Tab(val route: String, val label: Int, val icon: ImageVector)
 @Composable
 fun MainScreen(vm: AppViewModel) {
     val state by vm.state.collectAsStateWithLifecycle()
-    val isHost = state.me?.role == "host"
+    // V1.4: the visible mode (not the legacy role) picks the shell. Switching rebuilds navigation so each mode has a clean back stack.
+    val isHost = state.hostMode
+    key(isHost) { ModeShell(vm, state, isHost) }
+}
+
+@OptIn(ExperimentalSharedTransitionApi::class)
+@Composable
+private fun ModeShell(vm: AppViewModel, state: com.nearvolt.ev.ui.AppState, isHost: Boolean) {
     val nav = rememberNavController()
     val tabs = if (isHost) listOf(Tab("dashboard", R.string.tab_dashboard, Icons.Outlined.SpaceDashboard), Tab("listing", R.string.tab_listing, Icons.Outlined.EvStation),
+        Tab("hostActivity", R.string.tab_activity, Icons.Outlined.History),
         Tab("alerts", R.string.tab_alerts, Icons.Outlined.Notifications), Tab("account", R.string.tab_account, Icons.Outlined.Person))
     // V1.2: Home | Map | Activity | Alerts | Account. The former "find" tab stays as a route (Home → Nearby, request alternatives).
     else listOf(Tab("home", R.string.tab_home, Icons.Outlined.Home), Tab("map", R.string.tab_map, Icons.Outlined.Map), Tab("activity", R.string.tab_activity, Icons.Outlined.History),
@@ -59,12 +67,14 @@ fun MainScreen(vm: AppViewModel) {
     val tabTop: (String) -> Unit = { r -> nav.navigate(r) { popUpTo(nav.graph.findStartDestination().id) { saveState = true }; launchSingleTop = true; restoreState = true } }
     // VOLT actions only navigate (or open the dialler after a confirmation inside VOLT). Nothing books, pays or contacts a host.
     val onVolt: (com.nearvolt.ev.volt.VoltAction) -> Unit = { a -> when (a) {
-        com.nearvolt.ev.volt.VoltAction.OPEN_MAP, com.nearvolt.ev.volt.VoltAction.FIND_COMPATIBLE_HOST -> if (isHost) goTop("find") else tabTop("map")
+        com.nearvolt.ev.volt.VoltAction.OPEN_MAP, com.nearvolt.ev.volt.VoltAction.FIND_COMPATIBLE_HOST -> if (!isHost) tabTop("map") else if (state.canDrive) vm.setMode("driver") else goTop("find")
         com.nearvolt.ev.volt.VoltAction.OPEN_GARAGE, com.nearvolt.ev.volt.VoltAction.CALCULATE_CHARGING_TIME -> goTop("garage")
-        com.nearvolt.ev.volt.VoltAction.OPEN_ACTIVITY -> if (isHost) goTop("hostHistory") else tabTop("activity")
+        com.nearvolt.ev.volt.VoltAction.OPEN_ACTIVITY -> if (isHost) tabTop("hostActivity") else tabTop("activity")
         com.nearvolt.ev.volt.VoltAction.OPEN_SUPPORT -> goTop("support")
         com.nearvolt.ev.volt.VoltAction.OPEN_SAFETY -> goTop("safety")
         com.nearvolt.ev.volt.VoltAction.OPEN_EMERGENCY_DIALER -> goTop("contacts")
+        com.nearvolt.ev.volt.VoltAction.OPEN_HOST_DASHBOARD -> if (isHost) tabTop("dashboard") else vm.setMode("host")
+        com.nearvolt.ev.volt.VoltAction.OPEN_LISTING -> if (isHost) tabTop("listing") else vm.setMode("host")
     } }
 
     Box(Modifier.fillMaxSize()) {
@@ -105,7 +115,8 @@ fun MainScreen(vm: AppViewModel) {
             nvComposable("safety") { SafetyScreen(onBack = { nav.popBackStack() }, openSupport = { go("support") }) }
             nvComposable("emergency") { EmergencyScreen(vm, onBack = { nav.popBackStack() }, openRequest = { nav.navigate("request/$it") }) }
             nvComposable("activity") { HistoryScreen(asRole = "customer", open = { nav.navigate("request/$it") }) }
-            nvComposable("dashboard") { HostDashboard(openRequest = { nav.navigate("request/$it") }, openListing = { nav.navigate("listing") }, openHistory = { nav.navigate("hostHistory") }) }
+            nvComposable("dashboard") { HostDashboard(app = vm, openRequest = { nav.navigate("request/$it") }, openListing = { nav.navigate("listing") }, openHistory = { nav.navigate("hostHistory") }) }
+            nvComposable("hostActivity") { HistoryScreen(asRole = "host", open = { nav.navigate("request/$it") }) }
             nvComposable("hostHistory") { HistoryScreen(asRole = "host", open = { nav.navigate("request/$it") }, onBack = { nav.popBackStack() }) }
             nvComposable("listing") { ListingEditor() }
             nvComposable("alerts") { NotificationsScreen(open = { nav.navigate("request/$it") }) }
@@ -131,11 +142,11 @@ fun MainScreen(vm: AppViewModel) {
             }
         }
         // Floating VOLT orb: Home, Map, Activity, Alerts only (not Account forms, host dashboard, requests/PIN). It avoids registered controls.
-        if (uid != null && current in setOf("home", "map", "activity", "alerts")) VoltOrb(bottomInset = 0.dp)
+        if (uid != null && current in setOf("home", "map", "activity", "alerts", "hostActivity")) VoltOrb(bottomInset = 0.dp)
         }
         } }
     }
-    if (uid != null) VoltOverlay(uid, onVolt)
+    if (uid != null) VoltOverlay(uid, onVolt, isHost)
     // One-time V1.3 feature intro (per account, device-local); re-openable from Tools.
     if (uid != null && (showIntro || (local != null && local?.seenIntro13 == false && !isHost))) FeatureIntro {
         showIntro = false; scope.launch { c.accountStore.update(uid) { it.copy(seenIntro13 = true) } } }

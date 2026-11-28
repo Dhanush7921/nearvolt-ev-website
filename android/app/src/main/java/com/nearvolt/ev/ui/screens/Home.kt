@@ -102,6 +102,7 @@ fun HomeScreen(app: AppViewModel, openMap: () -> Unit, openFind: () -> Unit, ope
                 }
             }
         }
+        item(key = "mode") { ModeSwitch(app) }
         item(key = "hello") {
             Text(stringResource(R.string.home_hello, first.ifBlank { "there" }), style = MaterialTheme.typography.headlineMedium)
             Text(stringResource(R.string.home_ready), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)

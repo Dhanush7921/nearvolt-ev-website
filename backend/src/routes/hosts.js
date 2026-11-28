@@ -89,6 +89,8 @@ export function hostRoutes({ db, config, settings, fileStore }) {
         items.push({
           hostId: d.id, displayName: h.displayName, straightLineKm: roundKm(km), approxArea: area,
           connectors: eq.connectors, vehicleTypes: eq.vehicleTypes, powerKw: eq.powerKw, chargerType: eq.chargerType, phase: eq.phase,
+          // V1.4: what the app's request gate needs for wall sockets (no location or private detail).
+          dedicatedCircuit: h.selfDeclaration?.dedicatedCircuit === true, currentA: eq.currentA,
           bookableNow: isHostBookable(h, now), openNow: isOpenNow(h.hours, now), hours: h.hours,
           rating: h.rating?.count ? { average: Math.round((h.rating.sum / h.rating.count) * 10) / 10, count: h.rating.count } : null,
           availabilityUpdatedAt: ts(h.availabilityUpdatedAt),

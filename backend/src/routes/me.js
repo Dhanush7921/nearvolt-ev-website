@@ -3,19 +3,33 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { validate } from '../middleware/validate.js';
 import { ok } from '../middleware/errors.js';
 import { conflict, bad } from '../lib/errors.js';
-import { profileSchema, consentSchema, roleSchema, deviceSchema, sessionSchema, listQuery } from '../lib/schemas.js';
+import { profileSchema, consentSchema, roleSchema, capabilitySchema, deviceSchema, sessionSchema, listQuery } from '../lib/schemas.js';
+import { keyedMutex } from '../lib/keyedMutex.js';
 import { enqueue } from '../services/outbox.js';
 import { auditEntry, writeAudit } from '../services/audit.js';
 import { paginate, ts } from '../lib/paginate.js';
 import { hitLimit } from '../lib/limiter.js';
 import { ACTIVE } from '../services/stateMachine.js';
 
+/**
+ * V1.4 capabilities. Source of truth = users/{uid}.capabilities (server-written only); the legacy `role` field implies its own
+ * capability, so records created before V1.4 need no migration. 'driver' == legacy role 'customer'.
+ */
+export function capsOf(u = {}) {
+  const c = u.capabilities || {};
+  return { driver: c.driver === true || u.role === 'customer', host: c.host === true || u.role === 'host' };
+}
+export const rolesOf = (u) => { const c = capsOf(u); return [...(c.driver ? ['customer'] : []), ...(c.host ? ['host'] : [])]; };
 export function userSheetRow(uid, u, status = 'ACTIVE') {
+  const c = capsOf(u);
   return { uid, role: u.role, name: u.name, phone: u.phone, email: u.email, vehicleType: u.vehicle?.type,
-    connector: u.vehicle?.connector, createdAt: ts(u.createdAt) || new Date().toISOString(), updatedAt: new Date().toISOString(), status };
+    connector: u.vehicle?.connector, createdAt: ts(u.createdAt) || new Date().toISOString(), updatedAt: new Date().toISOString(), status,
+    capabilities: [c.driver && 'driver', c.host && 'host'].filter(Boolean).join(' ') };
 }
 const publicUser = (uid, u) => ({ uid, name: u.name || '', role: u.role || null, phone: u.phone || null, email: u.email || null,
-  vehicle: u.vehicle || null, consents: u.consents || null, activeRequestId: u.activeRequestId || null, createdAt: ts(u.createdAt) });
+  vehicle: u.vehicle || null, consents: u.consents || null, activeRequestId: u.activeRequestId || null, createdAt: ts(u.createdAt),
+  capabilities: capsOf(u) });
+const capLock = keyedMutex();
 
 export function meRoutes({ db, auth, fileStore }) {
   const r = Router();
@@ -57,10 +71,46 @@ export function meRoutes({ db, auth, fileStore }) {
   r.post('/role', validate(roleSchema), async (req, res, next) => {
     try {
       if (req.user.role && req.user.role !== req.body.role) throw conflict('Account type is already set. Contact support to change it.', 'ROLE_LOCKED');
-      const u = await auth.getUser(req.user.uid);
-      await auth.setCustomUserClaims(req.user.uid, { ...(u.customClaims || {}), role: req.body.role });
-      await users.doc(req.user.uid).set({ role: req.body.role, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+      const cap = req.body.role === 'customer' ? 'driver' : 'host';
+      await users.doc(req.user.uid).set({ role: req.body.role, capabilities: { [cap]: true }, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+      await syncClaims(req.user.uid, req.body.role);
       ok(res, { role: req.body.role, refreshToken: true });
+    } catch (e) { next(e); }
+  });
+
+  /** Claims are always DERIVED from the Firestore record (never accumulated from the request), so concurrent calls converge. */
+  async function syncClaims(uid, primaryRole) {
+    const doc = (await users.doc(uid).get()).data() || {};
+    const u = await auth.getUser(uid);
+    const claims = { ...(u.customClaims || {}), roles: rolesOf(doc) };
+    if (!claims.role && primaryRole) claims.role = primaryRole;
+    await auth.setCustomUserClaims(uid, claims);   // admin and other claims are preserved untouched
+    return claims;
+  }
+
+  // V1.4: add Driver or Host mode to the SAME account/UID. Host mode does not create or approve a listing: the listing starts as
+  // DRAFT and still needs submission, documents and admin approval. Capabilities are never removed here.
+  r.post('/capabilities', validate(capabilitySchema), async (req, res, next) => {
+    try {
+      const uid = req.user.uid, cap = req.body.capability;
+      await hitLimit(db, `caps_${uid}`, 10, 86400);
+      const out = await capLock(uid, async () => {
+        const merged = await db.runTransaction(async (tx) => {
+          const s = await tx.get(users.doc(uid));
+          const u = s.exists ? s.data() : {};
+          if (!u.consents || !u.name) throw bad('Complete your profile first.');
+          if (!u.role) throw bad('Choose how you will use NEARVOLT first.');
+          if (capsOf(u)[cap]) return { u, changed: false };
+          const next = { ...u, capabilities: { ...(u.capabilities || {}), [cap]: true } };
+          tx.set(users.doc(uid), { capabilities: { [cap]: true }, [`capabilityAt.${cap}`]: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+          enqueue(db, tx, 'USERS', uid, userSheetRow(uid, next));
+          writeAudit(db, tx, auditEntry(req.user, 'account.capability.add', `users/${uid}`, { capability: cap }));
+          return { u: next, changed: true };
+        });
+        await syncClaims(uid, merged.u.role);
+        return merged;
+      });
+      ok(res, { capabilities: capsOf(out.u), changed: out.changed, refreshToken: true });
     } catch (e) { next(e); }
   });
 

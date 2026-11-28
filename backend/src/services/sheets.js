@@ -5,7 +5,7 @@ import { logger } from '../lib/logger.js';
 
 // Column layout per tab. Column A is always the stable key (Firebase UID or record ID).
 export const COLUMNS = {
-  USERS: ['uid', 'role', 'name', 'phone', 'email', 'vehicleType', 'connector', 'createdAt', 'updatedAt', 'status'],
+  USERS: ['uid', 'role', 'name', 'phone', 'email', 'vehicleType', 'connector', 'createdAt', 'updatedAt', 'status', 'capabilities'],
   HOSTS: ['uid', 'displayName', 'status', 'serviceArea', 'connectors', 'powerKw', 'submittedAt', 'reviewedAt', 'reviewedBy'],
   LOGIN_LOGS: ['eventId', 'uid', 'method', 'at'],
   CHARGING_REQUESTS: ['requestId', 'customerUid', 'hostUid', 'status', 'connector', 'createdAt', 'updatedAt'],

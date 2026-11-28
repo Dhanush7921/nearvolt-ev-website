@@ -160,7 +160,6 @@
     <string name="role_customer_body">पास में चार्जिंग खोजें और अनुरोध करें</string>
     <string name="role_host">चार्जिंग होस्ट</string>
     <string name="role_host_body">अपना सत्यापित चार्जिंग पॉइंट उपलब्ध कराएँ</string>
-    <string name="setup_role_locked">आप इसे बाद में सपोर्ट के ज़रिए बदल सकते हैं।</string>
     <string name="setup_role_q">आप NEARVOLT EV का उपयोग कैसे करेंगे?</string>
     <string name="setup_title">अपनी प्रोफ़ाइल सेट करें</string>
     <string name="setup_vehicle">आपका वाहन</string>

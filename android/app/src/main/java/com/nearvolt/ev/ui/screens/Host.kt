@@ -87,11 +87,12 @@ class HostViewModel : ViewModel() {
 }
 
 @Composable
-fun HostDashboard(openRequest: (String) -> Unit, openListing: () -> Unit, openHistory: () -> Unit, vm: HostViewModel = viewModel()) {
+fun HostDashboard(app: com.nearvolt.ev.ui.AppViewModel? = null, openRequest: (String) -> Unit, openListing: () -> Unit, openHistory: () -> Unit, vm: HostViewModel = viewModel()) {
     val s by vm.state.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { vm.load(); PushEvents.events.collect { vm.load() } }
     LazyColumn(contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         val l = s.listing
+        if (app != null) item { ModeSwitch(app) }
         item {
             val online = l?.status == "APPROVED" && l.available
             HeroHeader(stringResource(R.string.dash_title), s.incoming.count { it.status == "REQUESTED" }.let { n -> androidx.compose.ui.res.pluralStringResource(R.plurals.dash_hero_sub, n, n) },

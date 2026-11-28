@@ -1581,7 +1581,7 @@
       "as",
       "host"
     ],
-    "answer": "Host registration requires verification. VOLT cannot register or approve hosts.",
+    "answer": "Host registration requires verification. Turn on Host mode in Account, then complete your listing with photos and an electrical safety document for review. VOLT cannot register or approve hosts.",
     "source": "brief",
     "safety": "general",
     "reviewStatus": "owner-provided",
@@ -1616,7 +1616,7 @@
       "pin",
       "verification"
     ],
-    "answer": "A future session PIN may verify an agreed session. Exact production rules require owner review; never share login OTPs here.",
+    "answer": "When a host accepts, NEARVOLT shows the driver a 4-digit session PIN. The host enters it to start charging. Share it only in person at the charging point; it expires and locks after repeated wrong attempts.",
     "source": "design",
     "safety": "general",
     "reviewStatus": "owner-provided",

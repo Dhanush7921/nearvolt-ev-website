@@ -12,6 +12,7 @@ import { paginate, ts } from '../lib/paginate.js';
 import { hitLimit } from '../lib/limiter.js';
 import { keyedMutex } from '../lib/keyedMutex.js';
 import { randomInt, timingSafeEqual } from 'node:crypto';
+import { hasRole } from '../middleware/auth.js';
 
 // Session verification PIN: issued to the customer when the host accepts; the host must enter it to start charging.
 export const PIN_TTL_MS = 2 * 3600e3, PIN_MAX_ATTEMPTS = 5, PIN_MAX_REISSUES = 3;
@@ -31,6 +32,26 @@ export function requireCurrentClient(req) {
     throw new ApiError(426, 'UPGRADE_REQUIRED', 'Please update NEARVOLT EV to the latest version to make or accept new charging requests.');
   }
 }
+/**
+ * V1.4 server-side electrical gate (applies to every client version). Unknown or insufficient data blocks.
+ * Wall sockets are never authorised automatically: host-declared dedicated circuit, single phase, declared current/power within the
+ * socket rating, plus the driver's explicit portable-charger confirmation (checked at creation; recorded on the request).
+ */
+export const SOCKET_RATING = { DOMESTIC_15A: { amps: 15, kw: 3.45 }, INDUSTRIAL_16A: { amps: 16, kw: 3.68 } };
+export function electricalCheck(h, connector, { socketConfirmed }) {
+  const eq = h.equipment || {};
+  if (!(eq.powerKw > 0) || !['single', 'three'].includes(eq.phase) || !(eq.currentA > 0)) {
+    return new ApiError(409, 'ELECTRICAL_SPEC_INCOMPLETE', 'This charging point has incomplete electrical details, so it cannot be booked.');
+  }
+  const sock = SOCKET_RATING[connector];
+  if (!sock) return null;
+  if (h.selfDeclaration?.dedicatedCircuit !== true) return new ApiError(409, 'SOCKET_CIRCUIT_UNCONFIRMED', 'Wall-socket charging needs a host-confirmed dedicated circuit. This host has not confirmed one.');
+  if (eq.phase !== 'single' || eq.currentA > sock.amps || eq.powerKw > sock.kw) return new ApiError(409, 'SOCKET_OVER_RATING', 'This host\'s declared supply does not match a wall-socket rating, so socket charging cannot be booked.');
+  if (!socketConfirmed) return new ApiError(409, 'SOCKET_CONFIRMATION_REQUIRED', 'Update NEARVOLT EV and confirm your portable charger is rated for this socket.');
+  return null;
+}
+const DRIVING = new Set([S.ACCEPTED, S.ARRIVED, S.CHARGING]);
+
 const pinEq = (a, b) => a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b));
 
 const hostLock = keyedMutex();
@@ -87,10 +108,22 @@ async function runTx(db, reqRef, requestId, action, actor, reason, opts) {
         return { pinRejected: PIN_MAX_ATTEMPTS - q.pin.attempts - 1 };
       }
     }
+    if (q.customerUid === q.hostUid) throw forbidden('You cannot charge at your own charging point.');
     const hostRef = db.collection('hosts').doc(q.hostUid);
     const custRef = db.collection('users').doc(q.customerUid);
     const [hs, cs] = await Promise.all([tx.get(hostRef), tx.get(custRef)]);
     const h = hs.data() || {};
+    if (action === 'accept') {
+      // Re-check electrics at acceptance: the listing may have changed since the request was created.
+      const err = electricalCheck(h, q.connector, { socketConfirmed: q.socketConfirmed === true });
+      if (err) throw err;
+      // Dual role: a host who is currently on their own driver session cannot also take on a hosting session.
+      const hostUser = (await tx.get(db.collection('users').doc(q.hostUid))).data() || {};
+      if (hostUser.activeRequestId) {
+        const own = await tx.get(db.collection('requests').doc(hostUser.activeRequestId));
+        if (own.exists && DRIVING.has(own.data().status)) throw conflict('Finish your own charging visit before accepting a request.', 'DRIVING_ACTIVE');
+      }
+    }
     const wasHolding = HOLDS_CAPACITY.has(q.status), willHold = HOLDS_CAPACITY.has(chk.to);
     if (!wasHolding && willHold) {
       if (h.status !== 'APPROVED') throw conflict('This listing is not active.', 'HOST_INACTIVE');
@@ -146,8 +179,9 @@ export function requestRoutes({ db, config, settings, notify }) {
       if (!key || !/^[A-Za-z0-9-]{16,64}$/.test(key)) throw bad('Idempotency-Key header (16–64 chars) is required.');
       requireCurrentClient(req);
       await hitLimit(db, `reqcreate_${req.user.uid}`, 10, 3600);
-      const { hostId, vehicleType, connector, customerLocation, note, batteryPercent } = req.body;
+      const { hostId, vehicleType, connector, customerLocation, note, batteryPercent, socketConfirmation } = req.body;
       if (hostId === req.user.uid) throw bad('You cannot request your own charging point.');
+      if (!hasRole(req, 'customer')) throw new ApiError(403, 'MODE_NOT_ENABLED', 'Turn on Driver mode to request charging.');
       const s = await settings.get();
       if (!inServiceArea(customerLocation, s.serviceAreas || [])) throw bad('NEARVOLT EV is not available in this area yet.');
       const idemRef = db.collection('idempotency').doc(`${req.user.uid}_${key}`);
@@ -156,7 +190,9 @@ export function requestRoutes({ db, config, settings, notify }) {
       const reqRef = col.doc();
       // The host document is read OUTSIDE the transaction: creation must not lock the (potentially hot) host doc.
       // This check is advisory; capacity and host status are enforced atomically when the host accepts.
-      const hs = await hostRef.get();
+      const [hs, ownHost] = await Promise.all([hostRef.get(), db.collection('hosts').doc(req.user.uid).get()]);
+      // Dual role: no driver request while hosting an active session at your own charging point.
+      if ((ownHost.data()?.activeSessions || 0) > 0) throw conflict('Finish the charging session you are hosting before requesting charging.', 'HOSTING_ACTIVE');
       const result = await db.runTransaction(async (tx) => {
         const [idem, us] = await Promise.all([tx.get(idemRef), tx.get(userRef)]);
         if (idem.exists) return { replay: true, id: idem.data().requestId };
@@ -172,10 +208,13 @@ export function requestRoutes({ db, config, settings, notify }) {
         const h = hs.data();
         if (!isHostBookable(h)) throw conflict('This host is not available right now.', 'HOST_UNAVAILABLE');
         if (!h.equipment.connectors.includes(connector) || !h.equipment.vehicleTypes.includes(vehicleType)) throw conflict('This host does not support your vehicle or connector.', 'INCOMPATIBLE');
+        const elec = electricalCheck(h, connector, { socketConfirmed: socketConfirmation === true });
+        if (elec) throw elec;
         const now = Timestamp.now();
         const doc = { customerUid: req.user.uid, customerName: u.name, hostUid: hostId, hostName: h.displayName, vehicleType, connector, note: note || null,
           ...(batteryPercent != null ? { batteryPercent } : {}),
           customerLocation, straightLineKm: roundKm(distanceKm(customerLocation, approxArea(h.location))), /* cell-based: no pre-acceptance leak */ status: S.REQUESTED, compatibilityConfirmed: true,
+          ...(SOCKET_RATING[connector] ? { socketConfirmed: true } : {}),
           createdAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp(),
           expiresAt: Timestamp.fromMillis(now.toMillis() + config.REQUEST_TTL_SECONDS * 1000),
           history: [{ from: null, to: S.REQUESTED, by: 'customer', uid: req.user.uid, reason: null, at: now }] };

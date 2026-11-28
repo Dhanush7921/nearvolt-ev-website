@@ -17,6 +17,7 @@ interface ApiService {
     @PUT("api/v1/me/consents") suspend fun consents(@Body b: Consents): Response<Envelope<Ack>>
     @PUT("api/v1/me/profile") suspend fun profile(@Body b: ProfileBody): Response<Envelope<Me>>
     @POST("api/v1/me/role") suspend fun role(@Body b: RoleBody): Response<Envelope<Ack>>
+    @POST("api/v1/me/capabilities") suspend fun capabilities(@Body b: CapabilityBody): Response<Envelope<CapabilityResult>>
     @POST("api/v1/me/session") suspend fun session(@Body b: SessionBody): Response<Envelope<Ack>>
     @POST("api/v1/me/devices") suspend fun registerDevice(@Body b: DeviceBody): Response<Envelope<Ack>>
     @DELETE("api/v1/me/devices/{token}") suspend fun removeDevice(@Path("token") token: String): Response<Envelope<Ack>>

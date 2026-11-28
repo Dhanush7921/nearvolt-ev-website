@@ -23,6 +23,8 @@ import kotlin.math.min
 enum class VoltAction(val label: String) {
     OPEN_MAP("Open map"), FIND_COMPATIBLE_HOST("Find compatible charging"), OPEN_GARAGE("My Garage"), OPEN_ACTIVITY("Activity"),
     OPEN_SUPPORT("Support"), OPEN_SAFETY("Safety centre"), CALCULATE_CHARGING_TIME("Charging calculator"), OPEN_EMERGENCY_DIALER("Emergency options · 112"),
+    // V1.4 host shortcuts: shown by the app in Host mode only (the engine never emits them). Navigation only — nothing is approved.
+    OPEN_HOST_DASHBOARD("Host dashboard"), OPEN_LISTING("My listing"),
 }
 data class Action(val type: VoltAction, val label: String)
 

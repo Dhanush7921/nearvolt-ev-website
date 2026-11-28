@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { capsOf } from './me.js';
 import { z } from 'zod';
 import { FieldValue } from 'firebase-admin/firestore';
 import { validate } from '../middleware/validate.js';
@@ -81,7 +82,7 @@ export function adminRoutes({ db, auth, fileStore, settings, notify, sheetsClien
     try {
       const col = db.collection('users');
       const page = await paginate(col.orderBy('createdAt', 'desc'), col, req.q);
-      ok(res, { items: page.items.map((d) => { const u = d.data(); return { uid: d.id, name: u.name, role: u.role, phone: u.phone, email: u.email, status: u.status, createdAt: ts(u.createdAt) }; }), nextCursor: page.nextCursor });
+      ok(res, { items: page.items.map((d) => { const u = d.data(); return { uid: d.id, name: u.name, role: u.role, capabilities: capsOf(u), phone: u.phone, email: u.email, status: u.status, createdAt: ts(u.createdAt) }; }), nextCursor: page.nextCursor });
     } catch (e) { next(e); }
   });
 
@@ -241,8 +242,11 @@ export function adminRoutes({ db, auth, fileStore, settings, notify, sheetsClien
       let uids = [];
       if (req.body.audience === 'uid') { if (!req.body.uid) throw bad('uid required'); uids = [req.body.uid]; }
       else {
-        const snap = await db.collection('users').where('role', '==', req.body.audience === 'hosts' ? 'host' : 'customer').select().limit(2000).get();
-        uids = snap.docs.map((d) => d.id);
+        // Legacy role OR V1.4 capability; a dual-role user is notified once.
+        const [role, cap] = req.body.audience === 'hosts' ? ['host', 'host'] : ['customer', 'driver'];
+        const [a, b] = await Promise.all([db.collection('users').where('role', '==', role).select().limit(2000).get(),
+          db.collection('users').where(`capabilities.${cap}`, '==', true).select().limit(2000).get()]);
+        uids = [...new Set([...a.docs, ...b.docs].map((d) => d.id))];
       }
       for (const u of uids) await notify(u, { type: 'admin.announcement', title: req.body.title, body: req.body.body });
       await audit(req, 'notification.broadcast', req.body.audience, { count: uids.length });

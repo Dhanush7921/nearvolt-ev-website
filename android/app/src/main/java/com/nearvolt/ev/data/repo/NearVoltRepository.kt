@@ -15,6 +15,7 @@ class NearVoltRepository(private val api: ApiService = ApiClient.service) {
     suspend fun saveConsents(c: Consents) = call { api.consents(c) }
     suspend fun saveProfile(p: ProfileBody) = call { api.profile(p) }
     suspend fun setRole(role: String) = call { api.role(RoleBody(role)) }
+    suspend fun addCapability(cap: String) = call { api.capabilities(CapabilityBody(cap)) }
     suspend fun notifications(cursor: String? = null) = call(retries = 1) { api.notifications(cursor) }
     suspend fun readAll() = call { api.readAll() }
     suspend fun deleteAccount() = call { api.deleteAccount() }

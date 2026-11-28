@@ -11,7 +11,15 @@ import kotlinx.serialization.Serializable
 @Serializable data class Me(
     val uid: String, val name: String = "", val role: String? = null, val phone: String? = null, val email: String? = null,
     val vehicle: Vehicle? = null, val consents: Consents? = null, val activeRequestId: String? = null, val admin: Boolean = false, val profileComplete: Boolean = false,
-)
+    /** V1.4 server-managed modes. Absent on pre-V1.4 servers: derived from the legacy role. */
+    val capabilities: UserModes? = null,
+) {
+    val canDrive get() = capabilities?.driver ?: (role == "customer")
+    val canHost get() = capabilities?.host ?: (role == "host")
+}
+@Serializable data class UserModes(val driver: Boolean = false, val host: Boolean = false)
+@Serializable data class CapabilityBody(val capability: String)
+@Serializable data class CapabilityResult(val capabilities: UserModes, val changed: Boolean = false)
 @Serializable data class ProfileBody(val name: String, val vehicle: Vehicle? = null)
 @Serializable data class RoleBody(val role: String)
 @Serializable data class SessionBody(val method: String)
@@ -59,6 +67,8 @@ import kotlinx.serialization.Serializable
 @Serializable data class CreateRequestBody(
     val hostId: String, val vehicleType: String, val connector: String, val customerLocation: LatLng,
     val compatibilityConfirmed: Boolean = true, val note: String? = null, val batteryPercent: Int? = null,
+    /** V1.4: only sent for wall sockets, and only to servers advertising capabilities.socketGate (strict schemas reject unknown keys). */
+    val socketConfirmation: Boolean? = null,
 )
 @Serializable data class TransitionBody(val action: String, val reason: String? = null, val pin: String? = null)
 @Serializable data class FeedbackBody(val rating: Int, val comment: String? = null)
@@ -109,4 +119,7 @@ object Connectors {
 object VehicleTypes { val ALL = listOf("two_wheeler", "three_wheeler", "car") }
 
 /** Absent on a V1.0 backend → all false, and the app behaves like V1.0 (no battery field, no PIN UI). */
-@Serializable data class Capabilities(val apiLevel: Int = 1, val sessionPin: Boolean = false, val batteryPercent: Boolean = false)
+@Serializable data class Capabilities(val apiLevel: Int = 1, val sessionPin: Boolean = false, val batteryPercent: Boolean = false,
+    val dualRole: Boolean = false, val socketGate: Boolean = false)
+/** Last server capabilities seen this session (set by AppViewModel after /public/config). */
+object ServerCapabilities { @Volatile var current = Capabilities() }
