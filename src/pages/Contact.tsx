@@ -70,7 +70,11 @@ export default function Contact() {
     <div className="page" ref={ref}>
       <section className="cine-contact" aria-labelledby="cc-title">
         <div className="cc-card">
-          <img className="cc-bg" src={`${site.base}media/home-plug-poster-land.jpg`} alt="" decoding="async" />
+          <picture>
+            {/* phones get a 1 px placeholder instead of the 1080p poster (no hidden background download) */}
+            <source media="(max-width: 640px)" srcSet="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" />
+            <img className="cc-bg" src={`${site.base}media/home-plug-poster-land.jpg`} alt="" decoding="async" />
+          </picture>
           <div className="cc-veil" aria-hidden="true" />
           <div className="cc-grid">
             <div className="cc-copy">

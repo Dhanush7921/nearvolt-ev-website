@@ -52,7 +52,11 @@ export default function SignIn() {
     <div className="page auth" ref={ref}>
       <div className="auth-shell">
         <aside className="auth-cine" aria-label="NEARVOLT EV">
-          <img className="auth-cine-bg" src={`${site.base}media/home-plug-poster-land.jpg`} alt="" loading="eager" decoding="async" />
+          <picture>
+            {/* phones get a 1 px placeholder instead of the 1080p poster (no hidden background download) */}
+            <source media="(max-width: 900px)" srcSet="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" />
+            <img className="auth-cine-bg" src={`${site.base}media/home-plug-poster-land.jpg`} alt="" loading="eager" decoding="async" />
+          </picture>
           <div className="auth-cine-veil" aria-hidden="true" />
           <div className="auth-cine-copy">
             <Link to="/" className="auth-logo" aria-label="NEARVOLT EV home">

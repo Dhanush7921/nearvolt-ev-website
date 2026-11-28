@@ -2621,3 +2621,8 @@ html.js-reveal .footer-rule[data-reveal].is-in {
 .mobile-menu {
   align-content: start;
 }
+/* Keep the footer below the fold while a lazy page chunk loads (removes a ~0.2 CLS jump on secondary pages). */
+.page-loading {
+  min-height: 100vh;
+  min-height: 100svh;
+}
