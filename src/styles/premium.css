@@ -2626,3 +2626,38 @@ html.js-reveal .footer-rule[data-reveal].is-in {
   min-height: 100vh;
   min-height: 100svh;
 }
+/* Small phones: let grid tracks shrink below their widest word, and size headings to the screen. */
+.find-inner,
+.trust-head,
+.find-head {
+  grid-template-columns: minmax(0, 1fr);
+}
+.find-head,
+.composer,
+.find-result {
+  max-width: 100%;
+  min-width: 0;
+}
+@media (max-width: 420px) {
+  .find-head .h1,
+  .trust-head .h1 {
+    font-size: clamp(1.9rem, 10.5vw, 2.6rem);
+  }
+  .dash-tab {
+    width: 34px;
+    height: 40px;
+  }
+  .dash-side ul {
+    gap: 2px;
+  }
+}
+.composer,
+.cf,
+.auth-form {
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (max-width: 380px) {
+  .composer-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
